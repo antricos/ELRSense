@@ -1,0 +1,22 @@
+# Claude Code local tooling config
+.claude/
+
+# PlatformIO
+.pio/
+.pioenvs/
+.piolibdeps/
+
+# Arduino IDE / build artifacts
+*.hex
+*.bin
+*.elf
+*.o
+build/
+
+# Editor/IDE
+.vscode/
+*.code-workspace
+
+# OS cruft
+.DS_Store
+Thumbs.db
