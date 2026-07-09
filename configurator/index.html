@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>ELRSense Configurator</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+    :root {
+        color-scheme: light dark;
+        --border: #8888;
+    }
+    body {
+        font-family: -apple-system, Segoe UI, Roboto, sans-serif;
+        max-width: 720px;
+        margin: 2rem auto;
+        padding: 0 1rem;
+        line-height: 1.5;
+    }
+    h1 { font-size: 1.4rem; }
+    section { margin-bottom: 1.5rem; }
+    label.field { display: block; font-weight: 600; margin-bottom: 0.25rem; }
+    select { font-size: 1rem; padding: 0.3rem; width: 100%; max-width: 420px; }
+    .sensor-row {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        padding: 0.4rem 0;
+        border-bottom: 1px solid var(--border);
+    }
+    .sensor-name { flex: 1; }
+    .sensor-frame { opacity: 0.65; font-size: 0.85rem; font-family: monospace; }
+    #conflict-box {
+        margin-top: 0.75rem;
+        padding: 0.6rem;
+        border: 1px solid #c0392b;
+        border-radius: 4px;
+        color: #c0392b;
+    }
+    #generate-btn {
+        font-size: 1rem;
+        padding: 0.6rem 1.2rem;
+        cursor: pointer;
+    }
+    #generate-btn:disabled { cursor: not-allowed; opacity: 0.6; }
+    #status-box { margin-top: 0.75rem; opacity: 0.85; }
+    #reserved-pins-box { margin-top: 0.4rem; font-size: 0.85rem; opacity: 0.7; }
+</style>
+</head>
+<body>
+
+<h1>ELRSense Configurator</h1>
+<p>Pick a board and the sensors you're using; download a ready-to-open PlatformIO project with only the code you need.</p>
+
+<section>
+    <label class="field" for="board-select">Board</label>
+    <select id="board-select"></select>
+    <div id="reserved-pins-box"></div>
+</section>
+
+<section>
+    <label class="field" for="baud-select">CRSF baud rate</label>
+    <select id="baud-select"></select>
+</section>
+
+<section>
+    <label class="field">Sensors</label>
+    <div id="sensor-list"></div>
+    <div id="conflict-box" hidden></div>
+</section>
+
+<section>
+    <button id="generate-btn">Generate &amp; download project</button>
+    <div id="status-box"></div>
+</section>
+
+<script src="catalog.js"></script>
+<script src="zipwriter.js"></script>
+<script src="generator.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
