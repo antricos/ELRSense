@@ -19,16 +19,36 @@
     h1 { font-size: 1.4rem; }
     section { margin-bottom: 1.5rem; }
     label.field { display: block; font-weight: 600; margin-bottom: 0.25rem; }
-    select { font-size: 1rem; padding: 0.3rem; width: 100%; max-width: 420px; }
-    .sensor-row {
-        display: flex;
-        align-items: center;
-        gap: 0.6rem;
-        padding: 0.4rem 0;
-        border-bottom: 1px solid var(--border);
-    }
+    select { font-size: 1rem; padding: 0.3rem; }
+    #baud-select { width: 100%; max-width: 420px; }
+
     .sensor-name { flex: 1; }
     .sensor-frame { opacity: 0.65; font-size: 0.85rem; font-family: monospace; }
+    .sensor-pin-note { font-size: 0.8rem; opacity: 0.65; margin-top: 0.2rem; }
+
+    .sensor-group { padding: 0.4rem 0; border-bottom: 1px solid var(--border); }
+    .sensor-group-header { display: flex; align-items: center; gap: 0.6rem; }
+    .add-instance-btn {
+        font-size: 0.85rem;
+        padding: 0.2rem 0.6rem;
+        cursor: pointer;
+    }
+    .add-instance-btn:disabled { cursor: not-allowed; opacity: 0.5; }
+    .instance-list { margin-top: 0.4rem; }
+    .instance-row {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.2rem 0 0.2rem 1rem;
+    }
+    .instance-label { width: 2rem; opacity: 0.7; font-size: 0.85rem; }
+    .remove-instance-btn {
+        font-size: 0.8rem;
+        padding: 0.15rem 0.5rem;
+        cursor: pointer;
+        opacity: 0.75;
+    }
+
     #conflict-box {
         margin-top: 0.75rem;
         padding: 0.6rem;
@@ -44,17 +64,23 @@
     #generate-btn:disabled { cursor: not-allowed; opacity: 0.6; }
     #status-box { margin-top: 0.75rem; opacity: 0.85; }
     #reserved-pins-box { margin-top: 0.4rem; font-size: 0.85rem; opacity: 0.7; }
+
+    #pinout-details { margin-top: 0.6rem; }
+    #pinout-details summary { cursor: pointer; font-size: 0.9rem; }
+    #pinout-details img { max-width: 100%; margin-top: 0.6rem; border-radius: 4px; }
 </style>
 </head>
 <body>
 
 <h1>ELRSense Configurator</h1>
-<p>Pick a board and the sensors you're using; download a ready-to-open PlatformIO project with only the code you need.</p>
+<p>Board: <strong>ESP32-C3 Zero</strong>. Add the sensors you're using -- mapping each to a pin where applicable; download a single, self-contained .ino ready to open in Arduino IDE and flash.</p>
 
 <section>
-    <label class="field" for="board-select">Board</label>
-    <select id="board-select"></select>
     <div id="reserved-pins-box"></div>
+    <details id="pinout-details">
+        <summary>View ESP32-C3 Zero pinout diagram</summary>
+        <img src="../recources/esp32-c3-zero-pinout.jpg" alt="ESP32-C3 Zero pinout diagram" loading="lazy">
+    </details>
 </section>
 
 <section>
@@ -64,17 +90,20 @@
 
 <section>
     <label class="field">Sensors</label>
+    <p style="margin: 0 0 0.5rem; font-size: 0.85rem; opacity: 0.75;">
+        Hall/thermistor/voltage-divider/GPS sensors each get their own pin picker. GPS, INA226, and BMP280 are
+        capped at one "+ Add" -- their CRSF frame type has no way to tell multiple readings apart.
+    </p>
     <div id="sensor-list"></div>
     <div id="conflict-box" hidden></div>
 </section>
 
 <section>
-    <button id="generate-btn">Generate &amp; download project</button>
+    <button id="generate-btn">Generate &amp; download .ino</button>
     <div id="status-box"></div>
 </section>
 
 <script src="catalog.js"></script>
-<script src="zipwriter.js"></script>
 <script src="generator.js"></script>
 <script src="app.js"></script>
 </body>

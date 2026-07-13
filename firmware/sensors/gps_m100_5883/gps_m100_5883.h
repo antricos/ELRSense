@@ -2,8 +2,8 @@
  * HGLRC M100-5883 (u-blox M10) GPS module, minimal NMEA parsing (GGA +
  * RMC sentences only, checksum not verified) -> CRSF GPS (0x02).
  *
- * Deliberately not TinyGPS++ to keep the flash footprint small on the
- * Pro Mini -- see project plan for the rationale.
+ * Deliberately not TinyGPS++ to keep the flash footprint small -- see
+ * project plan for the rationale.
  */
 #pragma once
 #include <stdint.h>
