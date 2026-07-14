@@ -156,11 +156,25 @@ const SENSORS = {
         configDefines: ["VDIV_R_TOP_OHMS", "VDIV_R_BOTTOM_OHMS", "VDIV_VREF_MV"],
         // Subset of configDefines exposed as a per-instance number input in
         // the UI (rather than only being editable by hand in the generated
-        // .ino) -- the resistor values the user actually wired up.
+        // .ino) -- the resistor values the user actually wired up. Entered
+        // in kΩ for readability; `scale` is the multiplier generator.js
+        // applies to get back to the ohm value the #define actually wants.
         configFields: [
-            { key: "VDIV_R_TOP_OHMS", label: "R_TOP", unit: "Ω", default: 100000 },
-            { key: "VDIV_R_BOTTOM_OHMS", label: "R_BOTTOM", unit: "Ω", default: 10000 },
+            { key: "VDIV_R_TOP_OHMS", label: "R_TOP", unit: "kΩ", scale: 1000, default: 100 },
+            { key: "VDIV_R_BOTTOM_OHMS", label: "R_BOTTOM", unit: "kΩ", scale: 1000, default: 10 },
         ],
+        // Drives a derived "max measurable voltage" field in the UI:
+        // Vmax = vrefMv/1000 * (R_TOP + R_BOTTOM) / R_BOTTOM. Editing that
+        // field proposes a new R_TOP (topKey) with R_BOTTOM (bottomKey)
+        // held fixed. vrefMv mirrors VDIV_VREF_MV's firmware default (not
+        // itself a configField, so it's assumed fixed at 3.3V for this).
+        voltageRange: {
+            label: "Max voltage",
+            unit: "V",
+            vrefMv: 3300,
+            topKey: "VDIV_R_TOP_OHMS",
+            bottomKey: "VDIV_R_BOTTOM_OHMS",
+        },
         instanceSymbols: [
             "voltage_divider_init", "voltage_divider_poll_and_send",
             "PIN_VOLTAGE_DIV_ADC", "VDIV_VOLTAGE_SOURCE_ID",
@@ -186,9 +200,10 @@ const SENSORS = {
         configDefines: ["MF58_R_FIXED_OHMS", "MF58_R_NOMINAL_OHMS", "MF58_T_NOMINAL_C", "MF58_BETA"],
         // Resistor + thermistor nominal values the user actually wired up,
         // exposed as a per-instance number input (see configFields above).
+        // Entered in kΩ; `scale` converts back to ohms for the #define.
         configFields: [
-            { key: "MF58_R_FIXED_OHMS", label: "R_FIXED", unit: "Ω", default: 10000 },
-            { key: "MF58_R_NOMINAL_OHMS", label: "NTC nominal @25°C", unit: "Ω", default: 10000 },
+            { key: "MF58_R_FIXED_OHMS", label: "R_FIXED", unit: "kΩ", scale: 1000, default: 10 },
+            { key: "MF58_R_NOMINAL_OHMS", label: "NTC nominal @25°C", unit: "kΩ", scale: 1000, default: 10 },
         ],
         instanceSymbols: [
             "mf58_ntc_init", "mf58_ntc_poll_and_send",

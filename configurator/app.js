@@ -171,6 +171,26 @@ function renderSensorGroup(sensor) {
             row.appendChild(select);
         }
 
+        // sensor.voltageRange (voltage_divider only) drives a derived,
+        // editable "max voltage" field below -- these two functions keep it
+        // and the R_TOP/R_BOTTOM inputs in sync with each other.
+        const fieldInputs = {};
+        let voltageInput = null;
+
+        function computeMaxVoltage() {
+            const vr = sensor.voltageRange;
+            if (!vr) return null;
+            const topK = Number(inst.config[vr.topKey]);
+            const bottomK = Number(inst.config[vr.bottomKey]);
+            if (!Number.isFinite(topK) || !Number.isFinite(bottomK) || bottomK <= 0) return null;
+            return (vr.vrefMv / 1000) * (topK + bottomK) / bottomK;
+        }
+        function syncVoltageRange() {
+            if (!voltageInput) return;
+            const v = computeMaxVoltage();
+            if (v != null) voltageInput.value = Math.round(v * 100) / 100;
+        }
+
         for (const field of sensor.configFields || []) {
             const fieldLabel = document.createElement("label");
             fieldLabel.className = "config-field-label";
@@ -184,9 +204,41 @@ function renderSensorGroup(sensor) {
             input.addEventListener("input", () => {
                 const v = parseFloat(input.value);
                 inst.config[field.key] = Number.isFinite(v) ? v : field.default;
+                syncVoltageRange();
             });
+            fieldInputs[field.key] = input;
 
             fieldLabel.appendChild(input);
+            row.appendChild(fieldLabel);
+        }
+
+        if (sensor.voltageRange) {
+            const vr = sensor.voltageRange;
+            const fieldLabel = document.createElement("label");
+            fieldLabel.className = "config-field-label voltage-range-label";
+            fieldLabel.textContent = `${vr.label} (${vr.unit})`;
+            fieldLabel.title = `Assumes a ${(vr.vrefMv / 1000).toFixed(1)}V ADC reference (VDIV_VREF_MV default). ` +
+                `Editing this proposes a new ${sensor.configFields.find((f) => f.key === vr.topKey).label} with ` +
+                `${sensor.configFields.find((f) => f.key === vr.bottomKey).label} held fixed.`;
+
+            voltageInput = document.createElement("input");
+            voltageInput.type = "number";
+            voltageInput.step = "any";
+            voltageInput.className = "config-field-input voltage-range-input";
+            const initial = computeMaxVoltage();
+            voltageInput.value = initial != null ? Math.round(initial * 100) / 100 : "";
+            voltageInput.addEventListener("input", () => {
+                const desired = parseFloat(voltageInput.value);
+                const bottomK = Number(inst.config[vr.bottomKey]);
+                if (!Number.isFinite(desired) || !Number.isFinite(bottomK) || bottomK <= 0) return;
+                const vrefV = vr.vrefMv / 1000;
+                let proposedTop = Math.round(bottomK * (desired / vrefV - 1) * 100) / 100;
+                if (!Number.isFinite(proposedTop) || proposedTop < 0) proposedTop = 0;
+                inst.config[vr.topKey] = proposedTop;
+                if (fieldInputs[vr.topKey]) fieldInputs[vr.topKey].value = proposedTop;
+            });
+
+            fieldLabel.appendChild(voltageInput);
             row.appendChild(fieldLabel);
         }
 

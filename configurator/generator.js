@@ -234,12 +234,15 @@ async function generateArduinoSingleFile(baud, selection) {
             const extracted = extractConfigDefine(hText, name);
             hText = extracted.text;
             let line = extracted.line;
-            // configFields values chosen in the UI (e.g. divider resistor
-            // ohms) override the header's stock default.
+            // configFields values chosen in the UI (e.g. divider resistors,
+            // entered in kΩ) override the header's stock default. `scale`
+            // converts the UI's display unit back to what the #define wants.
             if (line && config && Object.prototype.hasOwnProperty.call(config, name)) {
+                const field = (sensor.configFields || []).find((f) => f.key === name);
+                const scale = field && field.scale ? field.scale : 1;
                 line = line.replace(
                     new RegExp(`(^#define\\s+${name}\\s+)\\S+`, "m"),
-                    (_m, prefix) => prefix + formatFloatLiteral(config[name])
+                    (_m, prefix) => prefix + formatFloatLiteral(config[name] * scale)
                 );
             }
             if (line) entries.push(line);
