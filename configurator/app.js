@@ -14,13 +14,21 @@ const conflictBox = document.getElementById("conflict-box");
 const generateBtn = document.getElementById("generate-btn");
 const statusBox = document.getElementById("status-box");
 
-// Every sensor id -> array of instances. Pin-role sensors store the chosen
-// GPIO per entry; I2C sensors (no pinRole) store `true` as a placeholder.
+// Every sensor id -> array of instances. Pin-role sensors store a
+// { pin, config } object per entry (`config` maps each of the sensor's
+// configFields keys, if any, to the value chosen in the UI); I2C sensors
+// (no pinRole) store `true` as a placeholder.
 const state = {};
 for (const sensor of Object.values(SENSORS)) state[sensor.id] = [];
 
 function maxInstancesFor(sensor) {
     return sensor.maxInstances || Infinity;
+}
+
+function defaultConfigFor(sensor) {
+    const config = {};
+    for (const field of sensor.configFields || []) config[field.key] = field.default;
+    return config;
 }
 
 function renderReservedPins() {
@@ -42,7 +50,7 @@ function populateBaudOptions() {
 function claimedPins() {
     const set = new Set();
     for (const sensor of Object.values(SENSORS)) {
-        if (sensor.pinRole) for (const p of state[sensor.id]) set.add(p);
+        if (sensor.pinRole) for (const inst of state[sensor.id]) set.add(inst.pin);
     }
     return set;
 }
@@ -77,9 +85,10 @@ function computeConflicts() {
 
     for (const sensor of Object.values(SENSORS)) {
         if (!sensor.pinRole) continue;
-        const pins = state[sensor.id];
-        pins.forEach((pin, i) => {
-            const label = pins.length > 1 ? `${sensor.name} #${i + 1}` : sensor.name;
+        const insts = state[sensor.id];
+        insts.forEach((inst, i) => {
+            const pin = inst.pin;
+            const label = insts.length > 1 ? `${sensor.name} #${i + 1}` : sensor.name;
             if (reserved.has(pin)) {
                 const why = BOARD.reservedPins[pin] || BOARD.i2cPins[pin];
                 conflicts.push(`${label}: GPIO${pin} is reserved (${why})`);
@@ -118,7 +127,7 @@ function renderSensorGroup(sensor) {
         if (sensor.pinRole) {
             const options = availablePins(sensor.pinRole, null);
             if (!options.length) return;
-            state[sensor.id].push(options[0]);
+            state[sensor.id].push({ pin: options[0], config: defaultConfigFor(sensor) });
         } else {
             state[sensor.id].push(true);
         }
@@ -137,7 +146,7 @@ function renderSensorGroup(sensor) {
     const instList = document.createElement("div");
     instList.className = "instance-list";
 
-    state[sensor.id].forEach((val, index) => {
+    state[sensor.id].forEach((inst, index) => {
         const row = document.createElement("div");
         row.className = "instance-row";
 
@@ -148,18 +157,37 @@ function renderSensorGroup(sensor) {
 
         if (sensor.pinRole) {
             const select = document.createElement("select");
-            for (const p of availablePins(sensor.pinRole, val)) {
+            for (const p of availablePins(sensor.pinRole, inst.pin)) {
                 const opt = document.createElement("option");
                 opt.value = String(p);
                 opt.textContent = pinLabel(p);
-                if (p === val) opt.selected = true;
+                if (p === inst.pin) opt.selected = true;
                 select.appendChild(opt);
             }
             select.addEventListener("change", () => {
-                state[sensor.id][index] = Number(select.value);
+                state[sensor.id][index].pin = Number(select.value);
                 renderSensors();
             });
             row.appendChild(select);
+        }
+
+        for (const field of sensor.configFields || []) {
+            const fieldLabel = document.createElement("label");
+            fieldLabel.className = "config-field-label";
+            fieldLabel.textContent = field.label + (field.unit ? ` (${field.unit})` : "");
+
+            const input = document.createElement("input");
+            input.type = "number";
+            input.step = "any";
+            input.className = "config-field-input";
+            input.value = inst.config[field.key];
+            input.addEventListener("input", () => {
+                const v = parseFloat(input.value);
+                inst.config[field.key] = Number.isFinite(v) ? v : field.default;
+            });
+
+            fieldLabel.appendChild(input);
+            row.appendChild(fieldLabel);
         }
 
         const removeBtn = document.createElement("button");

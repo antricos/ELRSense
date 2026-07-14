@@ -83,6 +83,14 @@ function extractConfigDefine(text, name) {
     };
 }
 
+// Formats a user-entered number as the float literal style used throughout
+// firmware/ (e.g. "100000.0f", "4700.5f") so overridden #define lines stay
+// valid C++ float literals ("100000f", with no decimal point, is not).
+function formatFloatLiteral(value) {
+    const s = String(value).trim();
+    return (s.includes(".") ? s : s + ".0") + "f";
+}
+
 // Deletes a single line by pattern -- used for plumbing macros that aren't
 // user-tunable (their explanatory comments, if any, get swept up by
 // stripComments() below regardless of whether the line itself survives).
@@ -156,14 +164,19 @@ async function generateArduinoSingleFile(baud, selection) {
     const multiInstances = [];
     for (const sensor of Object.values(SENSORS)) {
         if (!sensor.pinRole) continue;
-        const pins = selection[sensor.id] || [];
-        pins.forEach((pin, index) => {
+        const insts = selection[sensor.id] || [];
+        insts.forEach((entry, index) => {
+            // Entries are { pin, config } objects; `config` holds overrides
+            // for any of sensor.configFields the user edited in the UI.
+            const pin = typeof entry === "object" && entry !== null ? entry.pin : entry;
+            const config = typeof entry === "object" && entry !== null ? entry.config : undefined;
             multiInstances.push({
                 sensor,
                 index,
                 pin,
+                config,
                 sourceId: sensor.sourceIdBase != null ? sensor.sourceIdBase + index : null,
-                label: pins.length > 1 ? `${sensor.name} #${index + 1}` : sensor.name,
+                label: insts.length > 1 ? `${sensor.name} #${index + 1}` : sensor.name,
             });
         });
     }
@@ -207,7 +220,7 @@ async function generateArduinoSingleFile(baud, selection) {
     // --- multi-instance (pin-role) sensors: per-instance pin/source-id/calibration -> config ---
     const multiHeaderTexts = []; // { inst, hText }
     for (const inst of multiInstances) {
-        const { sensor, index, pin, sourceId, label } = inst;
+        const { sensor, index, pin, config, sourceId, label } = inst;
         const suffix = `_${index}`;
         let hText = await fetchText(sensor.files[0]);
 
@@ -220,7 +233,16 @@ async function generateArduinoSingleFile(baud, selection) {
         for (const name of sensor.configDefines) {
             const extracted = extractConfigDefine(hText, name);
             hText = extracted.text;
-            if (extracted.line) entries.push(extracted.line);
+            let line = extracted.line;
+            // configFields values chosen in the UI (e.g. divider resistor
+            // ohms) override the header's stock default.
+            if (line && config && Object.prototype.hasOwnProperty.call(config, name)) {
+                line = line.replace(
+                    new RegExp(`(^#define\\s+${name}\\s+)\\S+`, "m"),
+                    (_m, prefix) => prefix + formatFloatLiteral(config[name])
+                );
+            }
+            if (line) entries.push(line);
         }
 
         hText = renameSymbols(hText, sensor.instanceSymbols, suffix);
