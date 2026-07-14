@@ -7,77 +7,250 @@
 <style>
     :root {
         color-scheme: light dark;
-        --border: #8888;
+        --bg: #f5f6f8;
+        --surface: #ffffff;
+        --surface-2: #f0f1f4;
+        --border: #e0e2e8;
+        --text: #1a1d23;
+        --text-muted: #6b7280;
+        --accent: #3457e8;
+        --accent-contrast: #ffffff;
+        --danger: #c0392b;
+        --danger-bg: rgba(192, 57, 43, 0.08);
+        --radius: 12px;
+        --radius-sm: 8px;
+        --shadow: 0 1px 2px rgba(16, 20, 30, 0.04), 0 6px 16px rgba(16, 20, 30, 0.05);
     }
+    @media (prefers-color-scheme: dark) {
+        :root {
+            --bg: #101217;
+            --surface: #171a21;
+            --surface-2: #1e222b;
+            --border: #2b2f3a;
+            --text: #e7e9ee;
+            --text-muted: #97a0ad;
+            --accent: #6f8dff;
+            --accent-contrast: #0b1020;
+            --danger: #f28b7d;
+            --danger-bg: rgba(242, 139, 125, 0.12);
+            --shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 8px 20px rgba(0, 0, 0, 0.3);
+        }
+    }
+    * { box-sizing: border-box; }
     body {
-        font-family: -apple-system, Segoe UI, Roboto, sans-serif;
-        max-width: 720px;
-        margin: 2rem auto;
-        padding: 0 1rem;
-        line-height: 1.5;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        max-width: 780px;
+        margin: 0 auto;
+        padding: 2.75rem 1.25rem 4rem;
+        line-height: 1.55;
     }
-    h1 { font-size: 1.4rem; }
-    section { margin-bottom: 1.5rem; }
-    label.field { display: block; font-weight: 600; margin-bottom: 0.25rem; }
-    select { font-size: 1rem; padding: 0.3rem; }
+
+    .app-header { margin-bottom: 1.75rem; }
+    h1 {
+        font-size: 1.55rem;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+        margin: 0 0 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        flex-wrap: wrap;
+    }
+    .board-badge {
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+        color: var(--accent);
+        background: var(--surface-2);
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        padding: 0.25rem 0.65rem;
+    }
+    .subtitle { margin: 0; color: var(--text-muted); font-size: 0.95rem; max-width: 62ch; }
+
+    .panel {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        padding: 1.25rem 1.35rem;
+        margin-bottom: 1.25rem;
+    }
+    .panel-title {
+        display: block;
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        margin-bottom: 0.75rem;
+    }
+
+    select, input[type="number"] {
+        font-size: 0.95rem;
+        font-family: inherit;
+        color: var(--text);
+        background: var(--surface-2);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        padding: 0.45rem 0.6rem;
+    }
+    select:focus, input[type="number"]:focus {
+        outline: none;
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
+    }
     #baud-select { width: 100%; max-width: 420px; }
 
-    .sensor-name { flex: 1; }
-    .sensor-frame { opacity: 0.65; font-size: 0.85rem; font-family: monospace; }
-    .sensor-pin-note { font-size: 0.8rem; opacity: 0.65; margin-top: 0.2rem; }
-
-    .sensor-group { padding: 0.4rem 0; border-bottom: 1px solid var(--border); }
-    .sensor-group-header { display: flex; align-items: center; gap: 0.6rem; }
-    .add-instance-btn {
-        font-size: 0.85rem;
-        padding: 0.2rem 0.6rem;
-        cursor: pointer;
+    #reserved-pins-box {
+        display: inline-block;
+        font-size: 0.82rem;
+        color: var(--text-muted);
+        background: var(--surface-2);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        padding: 0.45rem 0.7rem;
     }
-    .add-instance-btn:disabled { cursor: not-allowed; opacity: 0.5; }
-    .instance-list { margin-top: 0.4rem; }
+    #pinout-details { margin-top: 0.85rem; }
+    #pinout-details summary {
+        cursor: pointer;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--accent);
+        width: fit-content;
+    }
+    #pinout-details img {
+        max-width: 100%;
+        margin-top: 0.75rem;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        box-shadow: var(--shadow);
+    }
+
+    .sensor-name { flex: 1; font-weight: 600; font-size: 0.95rem; }
+    .sensor-frame {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 0.72rem;
+        color: var(--text-muted);
+        background: var(--surface-2);
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        padding: 0.15rem 0.55rem;
+        white-space: nowrap;
+    }
+    .sensor-pin-note { font-size: 0.78rem; color: var(--text-muted); margin-top: 0.4rem; }
+
+    .sensor-group {
+        background: var(--surface-2);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        padding: 0.85rem 1rem;
+        margin-bottom: 0.65rem;
+    }
+    .sensor-group:last-child { margin-bottom: 0; }
+    .sensor-group-header { display: flex; align-items: center; gap: 0.65rem; }
+
+    .add-instance-btn {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: var(--accent-contrast);
+        background: var(--accent);
+        border: none;
+        border-radius: 999px;
+        padding: 0.32rem 0.85rem;
+        cursor: pointer;
+        transition: opacity 0.15s ease, transform 0.1s ease;
+    }
+    .add-instance-btn:hover:not(:disabled) { opacity: 0.88; }
+    .add-instance-btn:active:not(:disabled) { transform: scale(0.96); }
+    .add-instance-btn:disabled {
+        cursor: not-allowed;
+        color: var(--text-muted);
+        background: var(--border);
+        opacity: 0.7;
+    }
+
+    .instance-list { margin-top: 0.6rem; display: flex; flex-direction: column; gap: 0.4rem; }
     .instance-row {
         display: flex;
         align-items: center;
-        gap: 0.5rem;
-        padding: 0.2rem 0 0.2rem 1rem;
+        flex-wrap: wrap;
+        gap: 0.55rem;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        padding: 0.45rem 0.6rem;
     }
-    .instance-label { width: 2rem; opacity: 0.7; font-size: 0.85rem; }
-    .config-field-label { display: flex; align-items: center; gap: 0.3rem; font-size: 0.8rem; opacity: 0.85; }
-    .config-field-input { width: 5.5rem; font-size: 0.85rem; padding: 0.15rem 0.3rem; }
+    .instance-label { min-width: 1.6rem; font-size: 0.78rem; font-weight: 700; color: var(--text-muted); }
+    .instance-row select { font-size: 0.85rem; padding: 0.3rem 0.5rem; }
+
+    .config-field-label {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        font-size: 0.78rem;
+        font-weight: 500;
+        color: var(--text-muted);
+    }
+    .config-field-input { width: 5.5rem; font-size: 0.85rem; padding: 0.28rem 0.45rem; }
+
     .remove-instance-btn {
-        font-size: 0.8rem;
-        padding: 0.15rem 0.5rem;
+        margin-left: auto;
+        font-size: 0.78rem;
+        color: var(--danger);
+        background: transparent;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        padding: 0.25rem 0.6rem;
         cursor: pointer;
-        opacity: 0.75;
+        transition: background 0.15s ease, border-color 0.15s ease;
     }
+    .remove-instance-btn:hover { background: var(--danger-bg); border-color: var(--danger); }
 
     #conflict-box {
-        margin-top: 0.75rem;
-        padding: 0.6rem;
-        border: 1px solid #c0392b;
-        border-radius: 4px;
-        color: #c0392b;
+        margin-top: 0.85rem;
+        padding: 0.7rem 0.9rem;
+        border: 1px solid var(--danger);
+        background: var(--danger-bg);
+        border-radius: var(--radius-sm);
+        color: var(--danger);
+        font-size: 0.88rem;
     }
+
     #generate-btn {
         font-size: 1rem;
-        padding: 0.6rem 1.2rem;
+        font-weight: 700;
+        color: var(--accent-contrast);
+        background: var(--accent);
+        border: none;
+        border-radius: var(--radius-sm);
+        padding: 0.75rem 1.5rem;
         cursor: pointer;
+        box-shadow: var(--shadow);
+        transition: transform 0.12s ease, opacity 0.12s ease;
     }
-    #generate-btn:disabled { cursor: not-allowed; opacity: 0.6; }
-    #status-box { margin-top: 0.75rem; opacity: 0.85; }
-    #reserved-pins-box { margin-top: 0.4rem; font-size: 0.85rem; opacity: 0.7; }
-
-    #pinout-details { margin-top: 0.6rem; }
-    #pinout-details summary { cursor: pointer; font-size: 0.9rem; }
-    #pinout-details img { max-width: 100%; margin-top: 0.6rem; border-radius: 4px; }
+    #generate-btn:hover:not(:disabled) { transform: translateY(-1px); opacity: 0.95; }
+    #generate-btn:active:not(:disabled) { transform: translateY(0); }
+    #generate-btn:disabled {
+        cursor: not-allowed;
+        color: var(--text-muted);
+        background: var(--surface-2);
+        box-shadow: none;
+    }
+    #status-box { margin-top: 0.75rem; font-size: 0.88rem; color: var(--text-muted); }
 </style>
 </head>
 <body>
 
-<h1>ELRSense Configurator</h1>
-<p>Board: <strong>ESP32-C3 Zero</strong>. Add the sensors you're using -- mapping each to a pin where applicable; download a single, self-contained .ino ready to open in Arduino IDE and flash.</p>
+<div class="app-header">
+    <h1>ELRSense Configurator <span class="board-badge">ESP32-C3 Zero</span></h1>
+    <p class="subtitle">Add the sensors you're using -- mapping each to a pin where applicable; download a single, self-contained .ino ready to open in Arduino IDE and flash.</p>
+</div>
 
-<section>
+<section class="panel">
     <div id="reserved-pins-box"></div>
     <details id="pinout-details">
         <summary>View ESP32-C3 Zero pinout diagram</summary>
@@ -85,22 +258,18 @@
     </details>
 </section>
 
-<section>
-    <label class="field" for="baud-select">CRSF baud rate</label>
+<section class="panel">
+    <label class="panel-title" for="baud-select">CRSF baud rate</label>
     <select id="baud-select"></select>
 </section>
 
-<section>
-    <label class="field">Sensors</label>
-    <p style="margin: 0 0 0.5rem; font-size: 0.85rem; opacity: 0.75;">
-        Hall/thermistor/voltage-divider/GPS sensors each get their own pin picker. GPS, INA226, and BMP280 are
-        capped at one "+ Add" -- their CRSF frame type has no way to tell multiple readings apart.
-    </p>
+<section class="panel">
+    <label class="panel-title">Sensors</label>
     <div id="sensor-list"></div>
     <div id="conflict-box" hidden></div>
 </section>
 
-<section>
+<section class="panel">
     <button id="generate-btn">Generate &amp; download .ino</button>
     <div id="status-box"></div>
 </section>
