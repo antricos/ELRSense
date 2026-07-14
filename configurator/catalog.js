@@ -79,6 +79,22 @@ const BOARDS = {
     },
 };
 
+// Sections the sensor list is rendered under, grouped by CRSF frame type
+// (each sensor's own `frame` field is the group id -- see crsf.md for what
+// each frame carries). Order here is display order.
+const SENSOR_GROUPS = [
+    { id: "0x08 Battery Sensor" },
+    { id: "0x09 Barometric Altitude & Vertical Speed" },
+    { id: "0x0E Voltages" },
+    { id: "0x0D Temperature" },
+    { id: "0x0C RPM" },
+    { id: "0x02 GPS" },
+].map((g) => ({ ...g, label: g.id }));
+
+function sensorGroupId(sensor) {
+    return sensor.frame;
+}
+
 const SENSORS = {
     hall_3144e: {
         id: "hall_3144e",
@@ -184,7 +200,7 @@ const SENSORS = {
     mf58_ntc: {
         id: "mf58_ntc",
         name: "MF58 NTC Thermistor (voltage divider)",
-        frame: "0x0D TEMP",
+        frame: "0x0D Temperature",
         files: [
             "firmware/sensors/mf58_ntc/mf58_ntc.h",
             "firmware/sensors/mf58_ntc/mf58_ntc.cpp",

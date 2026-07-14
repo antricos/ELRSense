@@ -131,17 +131,24 @@
     }
 
     .sensor-name { flex: 1; font-weight: 600; font-size: 0.95rem; }
-    .sensor-frame {
+    .sensor-pin-note { font-size: 0.78rem; color: var(--text-muted); margin-top: 0.4rem; }
+
+    .sensor-group-section { margin-bottom: 1.1rem; }
+    .sensor-group-section:last-child { margin-bottom: 0; }
+    .sensor-group-heading {
+        display: inline-block;
         font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
         font-size: 0.72rem;
-        color: var(--text-muted);
+        font-weight: 700;
+        color: var(--accent);
         background: var(--surface-2);
         border: 1px solid var(--border);
         border-radius: 999px;
-        padding: 0.15rem 0.55rem;
+        padding: 0.2rem 0.65rem;
+        margin-bottom: 0.5rem;
         white-space: nowrap;
     }
-    .sensor-pin-note { font-size: 0.78rem; color: var(--text-muted); margin-top: 0.4rem; }
+    .sensor-group-hint { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem; }
 
     .sensor-group {
         background: var(--surface-2);

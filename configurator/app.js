@@ -106,10 +106,7 @@ function renderSensorGroup(sensor) {
 
     const header = document.createElement("div");
     header.className = "sensor-group-header";
-    header.innerHTML = `
-        <span class="sensor-name">${sensor.name}${sensor.usesI2c ? " (I2C)" : ""}</span>
-        <span class="sensor-frame">${sensor.frame}</span>
-    `;
+    header.innerHTML = `<span class="sensor-name">${sensor.name}</span>`;
 
     const max = maxInstancesFor(sensor);
     const atMax = state[sensor.id].length >= max;
@@ -261,8 +258,30 @@ function renderSensorGroup(sensor) {
 
 function renderSensors() {
     sensorList.innerHTML = "";
-    for (const sensor of Object.values(SENSORS)) {
-        sensorList.appendChild(renderSensorGroup(sensor));
+    const sensorsByGroup = new Map(SENSOR_GROUPS.map((g) => [g.id, []]));
+    for (const sensor of Object.values(SENSORS)) sensorsByGroup.get(sensorGroupId(sensor)).push(sensor);
+
+    for (const group of SENSOR_GROUPS) {
+        const sensors = sensorsByGroup.get(group.id);
+        if (!sensors.length) continue;
+
+        const section = document.createElement("div");
+        section.className = "sensor-group-section";
+
+        const heading = document.createElement("div");
+        heading.className = "sensor-group-heading";
+        heading.textContent = group.label;
+        section.appendChild(heading);
+
+        if (group.hint) {
+            const hint = document.createElement("div");
+            hint.className = "sensor-group-hint";
+            hint.textContent = group.hint;
+            section.appendChild(hint);
+        }
+
+        for (const sensor of sensors) section.appendChild(renderSensorGroup(sensor));
+        sensorList.appendChild(section);
     }
 
     const conflicts = computeConflicts();
