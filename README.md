@@ -1,4 +1,4 @@
-# ELRSense
+# <img src="recources/logo.png" alt="" height="32" align="absmiddle"> ELRSense
 
 ELRSense is an open-source framework for adding custom sensor telemetry
 to ExpressLRS receivers using ESP32 and compatible microcontrollers.
