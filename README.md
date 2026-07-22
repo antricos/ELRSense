@@ -8,9 +8,9 @@ to ExpressLRS receivers using ESP32 and compatible microcontrollers.
 - `firmware/` -- CRSF frame encoding, board pin/UART abstractions, and
   sensor driver modules (see `firmware/README.md`).
 - `configurator/` -- static, client-side web app that assembles a
-  ready-to-flash, single-file Arduino IDE `.ino` from a sensor selection
-  (currently targets the ESP32-C3 Zero only; see `configurator/README.md`
-  for running it locally).
+  ready-to-flash, single-file Arduino IDE `.ino` from a board + sensor
+  selection (targets the ESP32-C3 Zero or the Arduino Pro Mini
+  3.3V/8MHz; see `configurator/README.md` for running it locally).
 - `reference/` -- known-working reference implementations, including the
   CRSF protocol spec (`reference/pro-mini-crsf-temp/crsf.md`) used as the
   source of truth for every frame layout in `firmware/`.
