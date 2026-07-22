@@ -103,7 +103,7 @@
         border-color: var(--accent);
         box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
     }
-    #baud-select { width: 100%; max-width: 420px; }
+    #baud-select, #board-select { width: 100%; max-width: 420px; }
 
     #reserved-pins-box {
         display: inline-block;
@@ -122,12 +122,46 @@
         color: var(--accent);
         width: fit-content;
     }
-    #pinout-details img {
-        max-width: 100%;
+    .pinout-toolbar {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
         margin-top: 0.75rem;
+    }
+    .pinout-toolbar button {
+        font-family: inherit;
+        font-size: 1rem;
+        font-weight: 700;
+        line-height: 1;
+        color: var(--text);
+        background: var(--surface-2);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        width: 2rem;
+        height: 2rem;
+        cursor: pointer;
+    }
+    .pinout-toolbar button:hover { border-color: var(--accent); color: var(--accent); }
+    #pinout-zoom-reset { width: auto; padding: 0 0.6rem; font-size: 0.78rem; font-weight: 600; }
+    .pinout-hint { font-size: 0.76rem; color: var(--text-muted); margin-left: 0.25rem; }
+
+    #pinout-viewer {
+        margin-top: 0.5rem;
+        overflow: hidden;
         border: 1px solid var(--border);
         border-radius: var(--radius-sm);
         box-shadow: var(--shadow);
+        max-height: 70vh;
+        cursor: grab;
+        touch-action: none;
+    }
+    #pinout-viewer.dragging { cursor: grabbing; }
+    #pinout-viewer img {
+        display: block;
+        max-width: 100%;
+        transform-origin: 0 0;
+        user-select: none;
+        -webkit-user-drag: none;
     }
 
     .sensor-name { flex: 1; font-weight: 600; font-size: 0.95rem; }
@@ -255,15 +289,28 @@
 <body>
 
 <div class="app-header">
-    <h1>ELRSense Configurator <span class="board-badge">ESP32-C3 Zero</span></h1>
+    <h1>ELRSense Configurator <span class="board-badge" id="board-badge">ESP32-C3 Zero</span></h1>
     <p class="subtitle">Add the sensors you're using -- mapping each to a pin where applicable; download a single, self-contained .ino ready to open in Arduino IDE and flash.</p>
 </div>
 
 <section class="panel">
+    <label class="panel-title" for="board-select">Board</label>
+    <select id="board-select"></select>
+</section>
+
+<section class="panel">
     <div id="reserved-pins-box"></div>
     <details id="pinout-details">
-        <summary>View ESP32-C3 Zero pinout diagram</summary>
-        <img src="../recources/esp32-c3-zero-pinout.jpg" alt="ESP32-C3 Zero pinout diagram" loading="lazy">
+        <summary id="pinout-summary">View pinout diagram</summary>
+        <div class="pinout-toolbar">
+            <button type="button" id="pinout-zoom-out" title="Zoom out">&minus;</button>
+            <button type="button" id="pinout-zoom-reset" title="Reset zoom">100%</button>
+            <button type="button" id="pinout-zoom-in" title="Zoom in">+</button>
+            <span class="pinout-hint">Scroll or pinch to zoom, drag to pan</span>
+        </div>
+        <div id="pinout-viewer">
+            <img id="pinout-img" src="" alt="" loading="lazy">
+        </div>
     </details>
 </section>
 

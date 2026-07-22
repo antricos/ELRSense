@@ -1,9 +1,11 @@
 /**
  * See mf58_ntc.cpp for why "board.h"/"crsf.h" are included unqualified.
- * GpsSerial is a board-provided HardwareSerial (UART1) so this parser
- * doesn't need to know the underlying UART -- only the RX pin, which the
- * configurator picks per instance (PIN_GPS_RX). TX is left disconnected
- * (-1): this module never sends to the GPS.
+ * GpsSerial is a board-provided serial object (a HardwareSerial UART on the
+ * ESP32-C3, a SoftwareSerial on the Pro Mini) so this parser doesn't need to
+ * know the underlying UART -- only the RX pin, which the configurator picks
+ * per instance (PIN_GPS_RX), and GPS_SERIAL_BEGIN(), which each board
+ * defines to start GpsSerial the way its own type needs. TX is left
+ * disconnected: this module never sends to the GPS.
  */
 #include "gps_m100_5883.h"
 #include "board.h"
@@ -113,7 +115,7 @@ static void feed_char(char c) {
 }
 
 void gps_m100_5883_init() {
-    GpsSerial.begin(GPS_BAUD, SERIAL_8N1, PIN_GPS_RX, -1);
+    GPS_SERIAL_BEGIN();
     line_len = 0;
 }
 

@@ -156,8 +156,8 @@ function sectionBanner(label) {
  * namespaced per instance too), so any number of instances can coexist in
  * one translation unit without colliding.
  */
-async function generateArduinoSingleFile(baud, selection) {
-    const board = BOARDS.esp32c3_zero;
+async function generateArduinoSingleFile(boardId, baud, selection) {
+    const board = BOARDS[boardId];
     const systemIncludes = new Set();
     const configLines = [];
 
@@ -214,8 +214,15 @@ async function generateArduinoSingleFile(baud, selection) {
     if (!hasAdc) boardH = removeLine(boardH, /^#define ADC_MAX_COUNTS\b.*$\n?/m);
 
     // GpsSerial is a real object (board.cpp), not a #define -- stripped
-    // there, alongside its declaration here, when no GPS instance exists.
-    if (!hasGps) boardH = removeLine(boardH, /^extern HardwareSerial GpsSerial;.*$\n?/m);
+    // there, alongside its declaration/macro here, when no GPS instance
+    // exists. The extern's type (HardwareSerial/SoftwareSerial) and the
+    // SoftwareSerial include (Pro Mini only) vary per board, so these match
+    // generically rather than naming one board's type.
+    if (!hasGps) {
+        boardH = removeLine(boardH, /^extern \w+ GpsSerial;.*$\n?/m);
+        boardH = removeLine(boardH, /^#define GPS_SERIAL_BEGIN\(\).*$\n?/m);
+        boardH = removeLine(boardH, /^#include <SoftwareSerial\.h>[ \t]*\r?\n?/m);
+    }
 
     // --- multi-instance (pin-role) sensors: per-instance pin/source-id/calibration -> config ---
     const multiHeaderTexts = []; // { inst, hText }
@@ -287,7 +294,7 @@ async function generateArduinoSingleFile(baud, selection) {
 
     headerParts.push(fileBanner("board.h") + finalizeBody(boardH, systemIncludes));
     let boardCpp = await fetchText(board.boardFiles[1]);
-    if (!hasGps) boardCpp = removeLine(boardCpp, /^HardwareSerial GpsSerial\(1\);.*$\n?/m);
+    if (!hasGps) boardCpp = removeLine(boardCpp, /^\w+ GpsSerial\([^;]*\);.*$\n?/m);
     implParts.push(fileBanner("board.cpp") + finalizeBody(prefixStatics(boardCpp, "board"), systemIncludes));
 
     for (const sensor of singleSelected) {
@@ -352,11 +359,11 @@ async function generateArduinoSingleFile(baud, selection) {
         implParts.join("\n") + "\n" +
         sectionBanner("setup() / loop()") + mainBody;
 
-    return { name: "elrsense_esp32c3_zero.ino", content: ino.replace(/\n{3,}/g, "\n\n") };
+    return { name: `elrsense_${board.id}.ino`, content: ino.replace(/\n{3,}/g, "\n\n") };
 }
 
-async function generateAndDownload(baud, selection) {
-    const file = await generateArduinoSingleFile(baud, selection);
+async function generateAndDownload(boardId, baud, selection) {
+    const file = await generateArduinoSingleFile(boardId, baud, selection);
     const blob = new Blob([file.content], { type: "text/x-arduino" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);

@@ -35,6 +35,12 @@
 // known limitation worth re-checking against a multimeter on real hardware.
 #define ADC_MAX_COUNTS 4095
 
+// GPS_SERIAL_BEGIN() lets gps_m100_5883.cpp start GpsSerial without knowing
+// whether the board backs it with a HardwareSerial (as here) or a
+// SoftwareSerial -- their begin() signatures differ, so each board defines
+// this macro to match its own type.
+#define GPS_SERIAL_BEGIN() GpsSerial.begin(GPS_BAUD, SERIAL_8N1, PIN_GPS_RX, -1)
+
 // GPS UART: real HardwareSerial on UART1 (not a SoftwareSerial or Serial
 // alias), so sensor modules can just call GpsSerial.begin()/available()/
 // read() without knowing which physical UART backs it.

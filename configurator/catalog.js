@@ -44,6 +44,10 @@ const BOARDS = {
         pinPool: {
             adc: [0, 1, 2, 3, 4],
             digital: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+            // Any GPIO supports attachInterrupt() on this chip, so this
+            // mirrors `digital` -- unlike the Pro Mini, which restricts
+            // interrupts to two fixed pins (see pro_mini's pinPool below).
+            interrupt: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
         },
         // Pins never offered in the picker -- shown for information only,
         // since they're outside pinPool's 0-10 range anyway.
@@ -77,6 +81,81 @@ const BOARDS = {
                 "https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json , then Tools > Board > Boards Manager, search \"esp32\", install.",
         },
     },
+    pro_mini: {
+        id: "pro_mini",
+        name: "Arduino Pro Mini (3.3V/8MHz)",
+        pinoutImage: "recources/Arduino_Pro_Mini_Pinout.jpg",
+        boardFiles: [
+            "firmware/boards/pro_mini/board.h",
+            "firmware/boards/pro_mini/board.cpp",
+        ],
+        // Pin numbering matches the Arduino AVR core's own digital pin IDs
+        // (the same IDs PIN_* #defines and pinMode()/digitalRead() use), per
+        // recources/Arduino_Pro_Mini_Pinout.jpg: D0-D13 are digital pins,
+        // A0-A5 double as D14-D19, and A6/A7 are analog-only (no PCx port,
+        // no digitalRead()/pinMode() support) but still usable with
+        // analogRead() via the core's A6=20/A7=21 macros. Those two numbers
+        // don't appear on the physical pinout diagram -- they're internal
+        // IDs from the "Arduino Pro or Pro Mini" board's pins_arduino.h
+        // (the "eightanaloginputs" variant), not silkscreen labels, so
+        // `pinNames` below maps every number back to what's actually
+        // printed on the board/diagram for display in the UI.
+        pinPool: {
+            adc: [14, 15, 16, 17, 20, 21], // A0-A3, A6, A7 (A4/A5 reserved for I2C, see i2cPins)
+            digital: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13],
+            // attachInterrupt() only works on D2/D3 (INT0/INT1) on the
+            // 328P, unlike the ESP32-C3 where any GPIO qualifies -- see
+            // hall_3144e's pinRole.
+            interrupt: [2, 3],
+        },
+        // Silkscreen/diagram labels for every pin number used above --
+        // app.js falls back to "GPIOn" (the ESP32-C3's native naming) when
+        // a board has no pinNames map, but AVR boards are conventionally
+        // labeled D0-D13/A0-A7, not GPIOn, and A6/A7's raw numbers (20/21)
+        // don't appear on the board at all (see the pinPool comment above).
+        pinNames: {
+            0: "D0", 1: "D1", 2: "D2", 3: "D3", 4: "D4", 5: "D5", 6: "D6", 7: "D7",
+            8: "D8", 9: "D9", 10: "D10", 11: "D11", 12: "D12", 13: "D13",
+            14: "A0", 15: "A1", 16: "A2", 17: "A3", 18: "A4", 19: "A5", 20: "A6", 21: "A7",
+        },
+        // Pins never offered in the picker -- D0/RX is physically shared
+        // with the upload/CRSF TX line even though this project never reads
+        // from it (TX-only, see common/crsf.h).
+        reservedPins: { 0: "CRSF RX (unused, reserved)", 1: "CRSF TX" },
+        // Pins only reserved when an I2C sensor (ina226/bmp280) is selected.
+        i2cPins: { 18: "I2C SDA", 19: "I2C SCL" },
+        // Offered, but flagged -- shared with the board's onboard LED.
+        cautionPins: { 13: "onboard LED" },
+        // Board-wide (non-per-instance) pins always/conditionally needed.
+        pinDefines: {
+            order: ["PIN_I2C_SDA", "PIN_I2C_SCL", "PIN_CRSF_RX", "PIN_CRSF_TX"],
+            always: ["PIN_CRSF_RX", "PIN_CRSF_TX"],
+            perSensor: {
+                ina226: ["PIN_I2C_SDA", "PIN_I2C_SCL"],
+                bmp280: ["PIN_I2C_SDA", "PIN_I2C_SCL"],
+            },
+        },
+        crsfInitCall: "crsf_uart_init(CRSF_BAUD_RATE);",
+        // At 8MHz the AVR UART can't hit the CRSF-standard ~416666 baud
+        // accurately (best case ~20% error). 256000 resolves to the same
+        // UBRR/U2X registers (actual ~250000 baud) as the reference Pro
+        // Mini sketch's manual register setup (reference/pro-mini-crsf-temp),
+        // so it reproduces already-validated real-hardware behavior. The
+        // rest are either exact at this clock (250000/200000/125000) or a
+        // widely-supported CRSF compatibility rate (115200). Listed fastest
+        // to slowest, matching esp32c3_zero's baudOptions order.
+        baudOptions: [
+            { value: 256000, label: "256000 (recommended)", default: true },
+            { value: 250000, label: "250000" },
+            { value: 200000, label: "200000" },
+            { value: 125000, label: "125000" },
+            { value: 115200, label: "115200" },
+        ],
+        arduinoIde: {
+            boardMenu: "Tools > Board > Arduino AVR Boards > Arduino Pro or Pro Mini, then Tools > Processor > ATmega328P (3.3V, 8MHz)",
+            extraSetup: null,
+        },
+    },
 };
 
 // Sections the sensor list is rendered under, grouped by CRSF frame type
@@ -105,7 +184,7 @@ const SENSORS = {
             "firmware/sensors/hall_3144e/hall_3144e.cpp",
         ],
         usesI2c: false,
-        pinRole: "digital", // pulse-count interrupt input, no ADC needed
+        pinRole: "interrupt", // pulse-count interrupt input, no ADC needed
         sourceIdBase: 0, // RPM source_id: 0 = Motor 1, 1 = Motor 2, ... (crsf.md)
         pinDefine: "PIN_HALL_3144E",
         sourceIdDefine: "HALL_RPM_SOURCE_ID",
@@ -150,7 +229,9 @@ const SENSORS = {
         pollCall: "ina226_poll_and_send();",
         usesI2c: true,
         maxInstances: 1, // 0x08 Battery frame has no source_id -- one only
-        pinNote: "Shared I2C bus (GPIO8 SDA / GPIO9 SCL) -- no pin to pick.",
+        // No fixed pin text here -- app.js synthesizes it per selected
+        // board from BOARD.i2cPins (this note would go stale otherwise:
+        // the I2C bus is on different pins per board).
         configDefines: ["INA226_I2C_ADDR", "INA226_SHUNT_OHMS", "INA226_MAX_CURRENT_A", "INA226_BATTERY_CAPACITY_MAH"],
     },
     voltage_divider: {
@@ -239,7 +320,9 @@ const SENSORS = {
         pollCall: "bmp280_poll_and_send();",
         usesI2c: true,
         maxInstances: 1, // 0x09 Baro frame has no source_id -- one only
-        pinNote: "Shared I2C bus (GPIO8 SDA / GPIO9 SCL) -- no pin to pick.",
+        // No fixed pin text here -- app.js synthesizes it per selected
+        // board from BOARD.i2cPins (this note would go stale otherwise:
+        // the I2C bus is on different pins per board).
         configDefines: ["BMP280_I2C_ADDR"],
     },
 };

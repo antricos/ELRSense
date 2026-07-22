@@ -1,18 +1,168 @@
 /**
- * UI wiring: baud dropdown, per-sensor "+ Add" button + instance list
- * (pin dropdown for pin-role sensors, none for shared-I2C-bus ones),
- * generate button. Board is fixed to the ESP32-C3 Zero (the only one
- * currently supported).
+ * UI wiring: board dropdown, baud dropdown, per-sensor "+ Add" button +
+ * instance list (pin dropdown for pin-role sensors, none for
+ * shared-I2C-bus ones), generate button.
  */
 
-const BOARD = BOARDS.esp32c3_zero;
+let BOARD = BOARDS.esp32c3_zero;
 
+const boardSelect = document.getElementById("board-select");
+const boardBadge = document.getElementById("board-badge");
 const baudSelect = document.getElementById("baud-select");
 const reservedPinsBox = document.getElementById("reserved-pins-box");
+const pinoutDetails = document.getElementById("pinout-details");
+const pinoutSummary = document.getElementById("pinout-summary");
+const pinoutViewer = document.getElementById("pinout-viewer");
+const pinoutImg = document.getElementById("pinout-img");
+const pinoutZoomIn = document.getElementById("pinout-zoom-in");
+const pinoutZoomOut = document.getElementById("pinout-zoom-out");
+const pinoutZoomReset = document.getElementById("pinout-zoom-reset");
 const sensorList = document.getElementById("sensor-list");
 const conflictBox = document.getElementById("conflict-box");
 const generateBtn = document.getElementById("generate-btn");
 const statusBox = document.getElementById("status-box");
+
+function populateBoardOptions() {
+    boardSelect.innerHTML = "";
+    for (const board of Object.values(BOARDS)) {
+        const el = document.createElement("option");
+        el.value = board.id;
+        el.textContent = board.name;
+        if (board.id === BOARD.id) el.selected = true;
+        boardSelect.appendChild(el);
+    }
+}
+
+function renderPinoutImage() {
+    if (BOARD.pinoutImage) {
+        pinoutDetails.hidden = false;
+        pinoutSummary.textContent = `View ${BOARD.name} pinout diagram`;
+        pinoutImg.src = "../" + BOARD.pinoutImage;
+        pinoutImg.alt = `${BOARD.name} pinout diagram`;
+    } else {
+        pinoutDetails.hidden = true;
+    }
+    resetPinoutZoom();
+}
+
+// --- Pinout diagram zoom/pan -------------------------------------------
+// Wheel/pinch to zoom (about the cursor/pinch midpoint), drag to pan.
+// Pointer Events cover both mouse and touch in one code path; a second
+// active pointer (touch) upgrades a pan into a pinch-zoom.
+const PINOUT_MIN_SCALE = 1;
+const PINOUT_MAX_SCALE = 6;
+let pinoutScale = 1;
+let pinoutX = 0;
+let pinoutY = 0;
+const pinoutPointers = new Map();
+let pinoutPanStart = null; // { x, y, origX, origY }
+let pinoutPinchStart = null; // { dist, scale, x, y, midX, midY }
+
+function applyPinoutTransform() {
+    pinoutImg.style.transform = `translate(${pinoutX}px, ${pinoutY}px) scale(${pinoutScale})`;
+    pinoutZoomReset.textContent = `${Math.round(pinoutScale * 100)}%`;
+}
+
+function resetPinoutZoom() {
+    pinoutScale = 1;
+    pinoutX = 0;
+    pinoutY = 0;
+    applyPinoutTransform();
+}
+
+// Zooms by `factor` while keeping the point at (clientX, clientY) fixed on
+// screen -- the standard "zoom toward cursor" feel.
+function zoomPinoutAt(factor, clientX, clientY) {
+    const newScale = Math.min(PINOUT_MAX_SCALE, Math.max(PINOUT_MIN_SCALE, pinoutScale * factor));
+    if (newScale === pinoutScale) return;
+    const rect = pinoutViewer.getBoundingClientRect();
+    const cx = clientX - rect.left;
+    const cy = clientY - rect.top;
+    pinoutX = cx - ((cx - pinoutX) / pinoutScale) * newScale;
+    pinoutY = cy - ((cy - pinoutY) / pinoutScale) * newScale;
+    pinoutScale = newScale;
+    if (pinoutScale === PINOUT_MIN_SCALE) { pinoutX = 0; pinoutY = 0; }
+    applyPinoutTransform();
+}
+
+pinoutViewer.addEventListener("wheel", (e) => {
+    e.preventDefault();
+    zoomPinoutAt(e.deltaY < 0 ? 1.15 : 1 / 1.15, e.clientX, e.clientY);
+}, { passive: false });
+
+function zoomPinoutAtCenter(factor) {
+    const rect = pinoutViewer.getBoundingClientRect();
+    zoomPinoutAt(factor, rect.left + rect.width / 2, rect.top + rect.height / 2);
+}
+pinoutZoomIn.addEventListener("click", () => zoomPinoutAtCenter(1.25));
+pinoutZoomOut.addEventListener("click", () => zoomPinoutAtCenter(1 / 1.25));
+pinoutZoomReset.addEventListener("click", resetPinoutZoom);
+
+pinoutViewer.addEventListener("pointerdown", (e) => {
+    pinoutViewer.setPointerCapture(e.pointerId);
+    pinoutPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pinoutPointers.size === 1) {
+        pinoutPanStart = { x: e.clientX, y: e.clientY, origX: pinoutX, origY: pinoutY };
+        pinoutPinchStart = null;
+        pinoutViewer.classList.add("dragging");
+    } else if (pinoutPointers.size === 2) {
+        pinoutPanStart = null;
+        const [p0, p1] = Array.from(pinoutPointers.values());
+        const rect = pinoutViewer.getBoundingClientRect();
+        pinoutPinchStart = {
+            dist: Math.hypot(p0.x - p1.x, p0.y - p1.y),
+            scale: pinoutScale,
+            x: pinoutX,
+            y: pinoutY,
+            midX: (p0.x + p1.x) / 2 - rect.left,
+            midY: (p0.y + p1.y) / 2 - rect.top,
+        };
+    }
+});
+
+pinoutViewer.addEventListener("pointermove", (e) => {
+    if (!pinoutPointers.has(e.pointerId)) return;
+    pinoutPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pinoutPointers.size === 1 && pinoutPanStart) {
+        pinoutX = pinoutPanStart.origX + (e.clientX - pinoutPanStart.x);
+        pinoutY = pinoutPanStart.origY + (e.clientY - pinoutPanStart.y);
+        applyPinoutTransform();
+    } else if (pinoutPointers.size === 2 && pinoutPinchStart) {
+        const [p0, p1] = Array.from(pinoutPointers.values());
+        const dist = Math.hypot(p0.x - p1.x, p0.y - p1.y);
+        const { scale: startScale, x: startX, y: startY, midX, midY } = pinoutPinchStart;
+        const newScale = Math.min(PINOUT_MAX_SCALE, Math.max(PINOUT_MIN_SCALE, startScale * (dist / pinoutPinchStart.dist)));
+        pinoutX = midX - ((midX - startX) / startScale) * newScale;
+        pinoutY = midY - ((midY - startY) / startScale) * newScale;
+        pinoutScale = newScale;
+        applyPinoutTransform();
+    }
+});
+
+function endPinoutPointer(e) {
+    pinoutPointers.delete(e.pointerId);
+    if (pinoutPointers.size < 2) pinoutPinchStart = null;
+    if (pinoutPointers.size === 0) {
+        pinoutPanStart = null;
+        pinoutViewer.classList.remove("dragging");
+    }
+}
+pinoutViewer.addEventListener("pointerup", endPinoutPointer);
+pinoutViewer.addEventListener("pointercancel", endPinoutPointer);
+pinoutViewer.addEventListener("pointerleave", (e) => { if (e.buttons === 0) endPinoutPointer(e); });
+
+boardSelect.addEventListener("change", () => {
+    BOARD = BOARDS[boardSelect.value];
+    boardBadge.textContent = BOARD.name;
+    // Pins chosen for one board's pinPool generally aren't valid on the
+    // other's -- reset every sensor's instances rather than carry over
+    // stale pin numbers.
+    for (const sensor of Object.values(SENSORS)) state[sensor.id] = [];
+    populateBaudOptions();
+    renderReservedPins();
+    renderPinoutImage();
+    renderSensors();
+});
 
 // Every sensor id -> array of instances. Pin-role sensors store a
 // { pin, config } object per entry (`config` maps each of the sensor's
@@ -31,8 +181,14 @@ function defaultConfigFor(sensor) {
     return config;
 }
 
+// Board-native pin name (e.g. "A6", "D5" on the Pro Mini) if the board
+// defines one (`pinNames`), else the ESP32-C3's native "GPIOn" numbering.
+function pinName(pin) {
+    return (BOARD.pinNames && BOARD.pinNames[pin]) || `GPIO${pin}`;
+}
+
 function renderReservedPins() {
-    const always = Object.entries(BOARD.reservedPins).map(([pin, label]) => `GPIO${pin} (${label})`);
+    const always = Object.entries(BOARD.reservedPins).map(([pin, label]) => `${pinName(Number(pin))} (${label})`);
     reservedPinsBox.textContent = "Always reserved: " + always.join(", ");
 }
 
@@ -64,7 +220,7 @@ function reservedPinSet() {
 }
 
 function pinLabel(pin) {
-    let label = `GPIO${pin}`;
+    let label = pinName(pin);
     if (BOARD.cautionPins[pin]) label += ` (shared: ${BOARD.cautionPins[pin]})`;
     return label;
 }
@@ -91,9 +247,9 @@ function computeConflicts() {
             const label = insts.length > 1 ? `${sensor.name} #${i + 1}` : sensor.name;
             if (reserved.has(pin)) {
                 const why = BOARD.reservedPins[pin] || BOARD.i2cPins[pin];
-                conflicts.push(`${label}: GPIO${pin} is reserved (${why})`);
+                conflicts.push(`${label}: ${pinName(pin)} is reserved (${why})`);
             }
-            if (seen.has(pin)) conflicts.push(`GPIO${pin}: needed by both "${seen.get(pin)}" and "${label}"`);
+            if (seen.has(pin)) conflicts.push(`${pinName(pin)}: needed by both "${seen.get(pin)}" and "${label}"`);
             else seen.set(pin, label);
         });
     }
@@ -133,10 +289,16 @@ function renderSensorGroup(sensor) {
     header.appendChild(addBtn);
     wrap.appendChild(header);
 
-    if (sensor.pinNote) {
+    // I2C sensors (no pinRole) share the board's fixed bus -- the note
+    // naming its pins has to come from the selected board (BOARD.i2cPins),
+    // not a catalog string, since the bus lives on different pins per
+    // board. i2cPins' numeric keys iterate low-to-high, which happens to
+    // match SDA-then-SCL for every board defined so far.
+    if (sensor.usesI2c && !sensor.pinRole) {
+        const pins = Object.entries(BOARD.i2cPins).map(([pin, label]) => `${pinName(Number(pin))} ${label.replace(/^I2C /, "")}`);
         const note = document.createElement("div");
         note.className = "sensor-pin-note";
-        note.textContent = sensor.pinNote;
+        note.textContent = `Shared I2C bus (${pins.join(" / ")}) -- no pin to pick.`;
         wrap.appendChild(note);
     }
 
@@ -299,7 +461,7 @@ generateBtn.addEventListener("click", async () => {
     generateBtn.disabled = true;
     statusBox.textContent = "Generating...";
     try {
-        await generateAndDownload(Number(baudSelect.value), state);
+        await generateAndDownload(BOARD.id, Number(baudSelect.value), state);
         statusBox.textContent = "Downloaded. Open the .ino directly in Arduino IDE, select your board, and Upload.";
     } catch (err) {
         statusBox.textContent = "Generation failed: " + err.message +
@@ -309,6 +471,9 @@ generateBtn.addEventListener("click", async () => {
     }
 });
 
+populateBoardOptions();
+boardBadge.textContent = BOARD.name;
 populateBaudOptions();
 renderReservedPins();
+renderPinoutImage();
 renderSensors();
