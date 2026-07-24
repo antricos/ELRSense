@@ -212,6 +212,14 @@ const SENSORS = {
         initCall: (i) => `gps_m100_5883_init_${i}();`,
         pollCall: (i) => `gps_m100_5883_poll_and_send_${i}();`,
         configDefines: ["GPS_BAUD"],
+        // Exposed as a per-instance number input in the UI (see
+        // voltage_divider/mf58_ntc above) -- the NMEA baud rate the
+        // attached GPS module actually talks, in case it's not a u-blox
+        // M10 at its 9600 default. No `scale`: the field's value is the
+        // #define's value directly.
+        configFields: [
+            { key: "GPS_BAUD", label: "Baud rate", default: 9600 },
+        ],
         instanceSymbols: [
             "gps_m100_5883_init", "gps_m100_5883_poll_and_send",
             "PIN_GPS_RX", "GPS_BAUD",
