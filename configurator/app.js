@@ -477,3 +477,25 @@ populateBaudOptions();
 renderReservedPins();
 renderPinoutImage();
 renderSensors();
+
+// --- Theme toggle --------------------------------------------------------
+const themeToggle = document.getElementById("theme-toggle");
+
+function currentTheme() {
+    const saved = localStorage.getItem("theme");
+    if (saved === "light" || saved === "dark") return saved;
+    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+
+function applyTheme(theme) {
+    document.documentElement.setAttribute("data-theme", theme);
+    themeToggle.checked = theme === "dark";
+}
+
+applyTheme(currentTheme());
+
+themeToggle.addEventListener("change", () => {
+    const next = themeToggle.checked ? "dark" : "light";
+    localStorage.setItem("theme", next);
+    applyTheme(next);
+});
