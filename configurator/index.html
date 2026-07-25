@@ -176,8 +176,15 @@
     #pinout-zoom-reset { width: auto; padding: 0 0.6rem; font-size: 0.78rem; font-weight: 600; }
     .pinout-hint { font-size: 0.76rem; color: var(--text-muted); margin-left: 0.25rem; }
 
-    #pinout-viewer {
+    #pinout-stage-wrap {
         margin-top: 0.5rem;
+        position: relative;
+        display: flex;
+        align-items: flex-start;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+    }
+    #pinout-viewer {
         overflow: hidden;
         border: 1px solid var(--border);
         border-radius: var(--radius-sm);
@@ -185,15 +192,166 @@
         max-height: 70vh;
         cursor: grab;
         touch-action: none;
+        flex: 1 1 300px;
+        min-width: 0;
     }
     #pinout-viewer.dragging { cursor: grabbing; }
+    #pinout-stage {
+        position: relative;
+        display: inline-block;
+        transform-origin: 0 0;
+    }
     #pinout-viewer img {
         display: block;
         max-width: 100%;
-        transform-origin: 0 0;
         user-select: none;
         -webkit-user-drag: none;
     }
+    #pinout-overlay { position: absolute; inset: 0; }
+    #pinout-connections {
+        position: relative;
+        z-index: 2;
+        flex: none;
+        width: 190px;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    .connection-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        box-shadow: var(--shadow);
+        padding: 0.4rem 0.55rem;
+        font-size: 0.78rem;
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        width: 100%;
+        text-align: left;
+        font-family: inherit;
+        color: var(--text);
+    }
+    .connection-card.has-info { cursor: pointer; }
+    .connection-card.has-info:hover { border-color: var(--accent); }
+    .connection-card.has-info:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+    .connection-card .card-icon { font-size: 1.1rem; flex: none; }
+    .connection-card .card-text { min-width: 0; display: flex; flex-direction: column; }
+    .connection-card .card-name {
+        font-weight: 600;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .connection-card .card-pin { color: var(--text-muted); font-size: 0.72rem; }
+    #pinout-wires {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 1;
+        overflow: visible;
+    }
+    .wire-path {
+        fill: none;
+        stroke: var(--accent);
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-dasharray: 5 5;
+        animation: wire-flow 0.6s linear infinite;
+    }
+    @keyframes wire-flow { to { stroke-dashoffset: -10; } }
+    @media (max-width: 620px) {
+        #pinout-stage-wrap { flex-direction: column; }
+        #pinout-connections { width: 100%; flex-direction: row; flex-wrap: wrap; }
+    }
+
+    #sensor-info-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 100;
+    }
+    #sensor-info-modal {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 101;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        padding: 1.1rem 1.25rem;
+        width: min(400px, calc(100vw - 2.5rem));
+        max-height: min(70vh, 500px);
+        overflow-y: auto;
+    }
+    .modal-header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem; }
+    .modal-icon { font-size: 1.3rem; }
+    .modal-title { font-weight: 700; font-size: 1.02rem; flex: 1; }
+    #sensor-info-close {
+        background: none;
+        border: none;
+        font-size: 1.3rem;
+        line-height: 1;
+        color: var(--text-muted);
+        cursor: pointer;
+        padding: 0.1rem 0.3rem;
+    }
+    #sensor-info-close:hover { color: var(--accent); }
+    #sensor-info-image { display: block; width: 100%; height: auto; border-radius: var(--radius-sm); background: #fff; }
+    #experimental-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.6);
+        z-index: 200;
+    }
+    #experimental-modal {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 201;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        padding: 1.75rem;
+        width: min(440px, calc(100vw - 2.5rem));
+        text-align: center;
+    }
+    #experimental-modal .notice-icon { font-size: 2rem; margin-bottom: 0.5rem; }
+    #experimental-modal h2 { font-size: 1.1rem; margin: 0 0 0.75rem; }
+    #experimental-modal p { font-size: 0.92rem; line-height: 1.5; color: var(--text-muted); margin: 0 0 1rem; }
+    #experimental-modal .notice-releases-link { display: inline-block; margin-bottom: 1.25rem; font-size: 0.88rem; color: var(--accent); }
+    #experimental-continue {
+        background: var(--accent);
+        color: var(--accent-contrast);
+        border: none;
+        border-radius: var(--radius-sm);
+        padding: 0.65rem 1.1rem;
+        font-size: 0.92rem;
+        font-weight: 600;
+        cursor: pointer;
+        width: 100%;
+        font-family: inherit;
+    }
+    #experimental-continue:hover { opacity: 0.9; }
+    .pin-marker {
+        position: absolute;
+        width: 14px;
+        height: 14px;
+        margin: -7px 0 0 -7px;
+        border-radius: 50%;
+        border: 2px solid var(--surface);
+        box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4);
+    }
+    .pin-marker.claimed { background: var(--accent); }
+    .pin-marker.reserved { background: var(--text-muted); }
+    .pin-marker.i2c-active { background: #14b8a6; }
+    .pin-marker.caution { box-shadow: 0 0 0 2px var(--danger); }
 
     .sensor-name { flex: 1; font-weight: 600; font-size: 0.95rem; }
     .sensor-pin-note { font-size: 0.78rem; color: var(--text-muted); margin-top: 0.4rem; }
@@ -315,7 +473,7 @@
         box-shadow: none;
     }
     #status-box { margin-top: 0.75rem; font-size: 0.88rem; color: var(--text-muted); }
-    .app-footer { margin-top: 2rem; text-align: center; font-size: 0.85rem; }
+    .app-footer { margin-top: 2rem; display: flex; justify-content: center; flex-wrap: wrap; gap: 1.25rem; font-size: 0.85rem; }
     .app-footer a { color: var(--text-muted); text-decoration: none; display: inline-flex; align-items: center; gap: 0.4rem; }
     .app-footer a:hover { color: var(--accent); text-decoration: underline; }
     .app-header-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.75rem; }
@@ -354,6 +512,15 @@
 </head>
 <body>
 
+<div id="experimental-backdrop" hidden></div>
+<div id="experimental-modal" role="dialog" aria-modal="true" aria-labelledby="experimental-title" hidden>
+    <div class="notice-icon">⚠️</div>
+    <h2 id="experimental-title">Experimental — preview build</h2>
+    <p>Not yet verified on real hardware end-to-end &mdash; treat this as a preview for feedback, not a finished product.</p>
+    <a class="notice-releases-link" href="https://github.com/antricos/ELRSense/releases" target="_blank" rel="noopener">View releases &amp; known issues on GitHub &rarr;</a>
+    <button type="button" id="experimental-continue">I understand, continue</button>
+</div>
+
 <div class="app-header">
     <div class="app-header-row">
         <h1><img src="../recources/logo.png" alt="" class="app-logo">ELRSense Configurator <span class="board-badge" id="board-badge">ESP32-C3 Zero</span></h1>
@@ -384,8 +551,15 @@
             <button type="button" id="pinout-zoom-in" title="Zoom in">+</button>
             <span class="pinout-hint">Scroll or pinch to zoom, drag to pan</span>
         </div>
-        <div id="pinout-viewer">
-            <img id="pinout-img" src="" alt="" loading="lazy">
+        <div id="pinout-stage-wrap">
+            <div id="pinout-viewer">
+                <div id="pinout-stage">
+                    <img id="pinout-img" src="" alt="" loading="lazy">
+                    <div id="pinout-overlay"></div>
+                </div>
+            </div>
+            <div id="pinout-connections"></div>
+            <svg id="pinout-wires"></svg>
         </div>
     </details>
 </section>
@@ -411,7 +585,21 @@
         <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
         <span>View on GitHub</span>
     </a>
+    <a href="https://paypal.me/antricos" target="_blank" rel="noopener">
+        <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 14.2s-6-3.6-6-8.1C2 3.6 3.7 2 5.7 2c1.2 0 2 .5 2.3 1.2C8.3 2.5 9.1 2 10.3 2c2 0 3.7 1.6 3.7 4.1 0 4.5-6 8.1-6 8.1Z"/></svg>
+        <span>Donate via PayPal</span>
+    </a>
 </footer>
+
+<div id="sensor-info-backdrop" hidden></div>
+<div id="sensor-info-modal" role="dialog" aria-modal="true" aria-labelledby="sensor-info-title" hidden>
+    <div class="modal-header">
+        <span id="sensor-info-icon" class="modal-icon"></span>
+        <span id="sensor-info-title" class="modal-title"></span>
+        <button type="button" id="sensor-info-close" aria-label="Close">&times;</button>
+    </div>
+    <img id="sensor-info-image" src="" alt="">
+</div>
 
 <script src="catalog.js"></script>
 <script src="generator.js"></script>

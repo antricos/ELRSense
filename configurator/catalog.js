@@ -56,6 +56,15 @@ const BOARDS = {
         i2cPins: { 8: "I2C SDA", 9: "I2C SCL" },
         // Offered, but flagged -- shared with the board's onboard WS2812 LED.
         cautionPins: { 10: "onboard WS2812 LED" },
+        // Percentage position (of the pinoutImage's own width/height) of
+        // each pin's header hole, hand-calibrated against
+        // recources/esp32-c3-zero-pinout.jpg -- used to overlay live
+        // claimed/reserved markers on the diagram in the configurator.
+        pinCoords: {
+            0: [43.3, 43.1], 1: [43.3, 45.9], 2: [43.3, 48.6], 3: [43.3, 51.3], 4: [43.3, 54.0], 5: [43.3, 56.7],
+            6: [61.4, 56.7], 7: [61.4, 54.0], 8: [61.4, 51.3], 9: [61.4, 48.6], 10: [61.4, 45.9],
+            20: [61.4, 37.7], 21: [61.4, 35.0],
+        },
         // Board-wide (non-per-instance) pins always/conditionally needed.
         pinDefines: {
             order: ["PIN_I2C_SDA", "PIN_I2C_SCL", "PIN_CRSF_RX", "PIN_CRSF_TX"],
@@ -126,6 +135,21 @@ const BOARDS = {
         i2cPins: { 18: "I2C SDA", 19: "I2C SCL" },
         // Offered, but flagged -- shared with the board's onboard LED.
         cautionPins: { 13: "onboard LED" },
+        // Percentage position (of the pinoutImage's own width/height) of
+        // each pin's header hole, hand-calibrated against
+        // recources/Arduino_Pro_Mini_Pinout.jpg -- used to overlay live
+        // claimed/reserved markers on the diagram in the configurator. A4-A7
+        // have no header-hole graphic in this diagram (drawn as a separate
+        // label block below the board), so those four point at that label
+        // box instead of a hole.
+        pinCoords: {
+            0: [39.6, 30.2], 1: [39.6, 27.8],
+            2: [39.6, 37.2], 3: [39.6, 39.4], 4: [39.6, 41.7], 5: [39.6, 44.0],
+            6: [39.6, 46.2], 7: [39.6, 48.7], 8: [39.6, 50.9], 9: [39.6, 53.2],
+            10: [53.2, 53.2], 11: [53.2, 50.9], 12: [53.2, 48.7], 13: [53.2, 46.2],
+            14: [53.2, 44.0], 15: [53.2, 41.7], 16: [53.2, 39.4], 17: [53.2, 37.2],
+            18: [48.8, 59.9], 19: [48.8, 57.6], 20: [48.8, 66.7], 21: [48.8, 64.4],
+        },
         // Board-wide (non-per-instance) pins always/conditionally needed.
         pinDefines: {
             order: ["PIN_I2C_SDA", "PIN_I2C_SCL", "PIN_CRSF_RX", "PIN_CRSF_TX"],
@@ -178,6 +202,7 @@ const SENSORS = {
     hall_3144e: {
         id: "hall_3144e",
         name: "3144E Hall Sensor Module",
+        icon: "⚙️",
         frame: "0x0C RPM",
         files: [
             "firmware/sensors/hall_3144e/hall_3144e.h",
@@ -199,6 +224,7 @@ const SENSORS = {
     gps_m100_5883: {
         id: "gps_m100_5883",
         name: "HGLRC M100-5883 (M10) GPS Module",
+        icon: "🛰️",
         frame: "0x02 GPS",
         files: [
             "firmware/sensors/gps_m100_5883/gps_m100_5883.h",
@@ -228,6 +254,7 @@ const SENSORS = {
     ina226: {
         id: "ina226",
         name: "INA226 Current/Voltage Sensor",
+        icon: "🔋",
         frame: "0x08 Battery Sensor",
         files: [
             "firmware/sensors/ina226/ina226.h",
@@ -245,6 +272,8 @@ const SENSORS = {
     voltage_divider: {
         id: "voltage_divider",
         name: "Voltage Divider (plain)",
+        icon: "⚡",
+        wiringImage: "recources/Voltage Divider (plain).jpg",
         frame: "0x0E Voltages",
         files: [
             "firmware/sensors/voltage_divider/voltage_divider.h",
@@ -289,6 +318,8 @@ const SENSORS = {
     mf58_ntc: {
         id: "mf58_ntc",
         name: "MF58 NTC Thermistor (voltage divider)",
+        icon: "🌡️",
+        wiringImage: "recources/MF58 NTC Thermistor (voltage divider).jpg",
         frame: "0x0D Temperature",
         files: [
             "firmware/sensors/mf58_ntc/mf58_ntc.h",
@@ -319,6 +350,7 @@ const SENSORS = {
     bmp280: {
         id: "bmp280",
         name: "BMP280 Barometer",
+        icon: "⛰️",
         frame: "0x09 Barometric Altitude & Vertical Speed",
         files: [
             "firmware/sensors/bmp280/bmp280.h",

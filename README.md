@@ -28,7 +28,9 @@ This project is developed primarily for:
 We encourage the RC community to use, modify, and improve ELRSense.
 
 If you are interested in using ELRSense in a commercial product,
-please contact the maintainers before integration so we can discuss
-appropriate collaboration and licensing options.
+please [open an issue](https://github.com/antricos/ELRSense/issues) before
+integration so we can discuss appropriate collaboration and licensing
+options. Bug reports, questions, and feature requests are also welcome
+there.
 
 Commercial users must comply with all requirements of the GPL-3.0 license.

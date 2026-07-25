@@ -13,7 +13,18 @@ const reservedPinsBox = document.getElementById("reserved-pins-box");
 const pinoutDetails = document.getElementById("pinout-details");
 const pinoutSummary = document.getElementById("pinout-summary");
 const pinoutViewer = document.getElementById("pinout-viewer");
+const pinoutStage = document.getElementById("pinout-stage");
 const pinoutImg = document.getElementById("pinout-img");
+const pinoutOverlay = document.getElementById("pinout-overlay");
+const pinoutStageWrap = document.getElementById("pinout-stage-wrap");
+const pinoutConnections = document.getElementById("pinout-connections");
+const pinoutWires = document.getElementById("pinout-wires");
+const sensorInfoBackdrop = document.getElementById("sensor-info-backdrop");
+const sensorInfoModal = document.getElementById("sensor-info-modal");
+const sensorInfoIcon = document.getElementById("sensor-info-icon");
+const sensorInfoTitle = document.getElementById("sensor-info-title");
+const sensorInfoImage = document.getElementById("sensor-info-image");
+const sensorInfoClose = document.getElementById("sensor-info-close");
 const pinoutZoomIn = document.getElementById("pinout-zoom-in");
 const pinoutZoomOut = document.getElementById("pinout-zoom-out");
 const pinoutZoomReset = document.getElementById("pinout-zoom-reset");
@@ -45,6 +56,161 @@ function renderPinoutImage() {
     resetPinoutZoom();
 }
 
+// Live-highlight claimed/reserved pins on the pinout diagram, keyed off the
+// same board.pinCoords percentage map used to place each marker.
+function renderPinoutOverlay() {
+    pinoutOverlay.innerHTML = "";
+    if (!BOARD.pinCoords) return;
+
+    function addMarker(pin, cls, title) {
+        const coord = BOARD.pinCoords[pin];
+        if (!coord) return;
+        const marker = document.createElement("div");
+        marker.className = "pin-marker " + cls;
+        marker.style.left = coord[0] + "%";
+        marker.style.top = coord[1] + "%";
+        marker.title = title;
+        pinoutOverlay.appendChild(marker);
+    }
+
+    for (const [pin, reason] of Object.entries(BOARD.reservedPins)) {
+        addMarker(Number(pin), "reserved", `${pinName(Number(pin))} -- reserved (${reason})`);
+    }
+    if (state.ina226.length || state.bmp280.length) {
+        for (const [pin, reason] of Object.entries(BOARD.i2cPins)) {
+            addMarker(Number(pin), "i2c-active", `${pinName(Number(pin))} -- ${reason}`);
+        }
+    }
+    for (const sensor of Object.values(SENSORS)) {
+        if (!sensor.pinRole) continue;
+        state[sensor.id].forEach((inst, index) => {
+            const suffix = state[sensor.id].length > 1 ? ` #${index + 1}` : "";
+            const cautionCls = BOARD.cautionPins[inst.pin] ? " caution" : "";
+            addMarker(inst.pin, "claimed" + cautionCls, `${pinName(inst.pin)} -- ${sensor.name}${suffix}`);
+        });
+    }
+}
+
+// "Click add a sensor -> an animated wire draws out to it" visualization:
+// one card per connected instance in the side column, wired to the pin it
+// claims (or, for shared-bus I2C sensors with no pin of their own, the
+// bus's SDA pin). pinoutConnectionEls is rebuilt any time the sensor list
+// changes; renderWires() alone re-runs on every pan/zoom frame since a
+// pin's screen position depends on the live transform.
+let pinoutConnectionEls = []; // [{ pin, cardEl }]
+
+function connectionsList() {
+    const list = [];
+    for (const sensor of Object.values(SENSORS)) {
+        if (sensor.pinRole) {
+            state[sensor.id].forEach((inst, index) => {
+                const suffix = state[sensor.id].length > 1 ? ` #${index + 1}` : "";
+                list.push({ pin: inst.pin, icon: sensor.icon, name: sensor.name + suffix, pinLabel: pinName(inst.pin), wiringImage: sensor.wiringImage });
+            });
+        } else if (sensor.usesI2c && state[sensor.id].length) {
+            const [sdaPin, sclPin] = Object.keys(BOARD.i2cPins).map(Number);
+            const pinLabel = `SDA ${pinName(sdaPin)} / SCL ${pinName(sclPin)}`;
+            list.push({ pin: sdaPin, icon: sensor.icon, name: sensor.name, pinLabel, wiringImage: sensor.wiringImage });
+        }
+    }
+    return list;
+}
+
+function openSensorInfo(icon, name, imagePath) {
+    sensorInfoIcon.textContent = icon;
+    sensorInfoTitle.textContent = name;
+    sensorInfoImage.src = "../" + imagePath;
+    sensorInfoImage.alt = `${name} wiring diagram`;
+    sensorInfoBackdrop.hidden = false;
+    sensorInfoModal.hidden = false;
+}
+
+function closeSensorInfo() {
+    sensorInfoBackdrop.hidden = true;
+    sensorInfoModal.hidden = true;
+}
+
+sensorInfoClose.addEventListener("click", closeSensorInfo);
+sensorInfoBackdrop.addEventListener("click", closeSensorInfo);
+window.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !sensorInfoModal.hidden) closeSensorInfo();
+});
+
+function renderConnections() {
+    pinoutConnections.innerHTML = "";
+    pinoutConnectionEls = [];
+    for (const conn of connectionsList()) {
+        if (!BOARD.pinCoords[conn.pin]) continue;
+        const card = document.createElement(conn.wiringImage ? "button" : "div");
+        card.className = "connection-card" + (conn.wiringImage ? " has-info" : "");
+        if (conn.wiringImage) {
+            card.type = "button";
+            card.title = "Click for a wiring diagram";
+        }
+        const icon = document.createElement("span");
+        icon.className = "card-icon";
+        icon.textContent = conn.icon;
+        const text = document.createElement("span");
+        text.className = "card-text";
+        const name = document.createElement("span");
+        name.className = "card-name";
+        name.textContent = conn.name;
+        const pin = document.createElement("span");
+        pin.className = "card-pin";
+        pin.textContent = conn.pinLabel;
+        text.append(name, pin);
+        card.append(icon, text);
+        if (conn.wiringImage) {
+            card.addEventListener("click", () => openSensorInfo(conn.icon, conn.name, conn.wiringImage));
+        }
+        pinoutConnections.appendChild(card);
+        pinoutConnectionEls.push({ pin: conn.pin, cardEl: card });
+    }
+    renderWires();
+}
+
+const SVG_NS = "http://www.w3.org/2000/svg";
+
+function renderWires() {
+    pinoutWires.innerHTML = "";
+    if (!pinoutConnectionEls.length) return;
+    const wrapRect = pinoutStageWrap.getBoundingClientRect();
+    const viewerRect = pinoutViewer.getBoundingClientRect();
+    const imgRect = pinoutImg.getBoundingClientRect();
+    // The image (or the <details> it lives in) may not have finished
+    // loading/laying out yet on the very first render after a sensor is
+    // added -- rather than draw a wire from a bogus (0,0) rect, skip this
+    // pass; the pending "load" listener below re-renders once it's ready.
+    if (!imgRect.width || !imgRect.height) return;
+    for (const { pin, cardEl } of pinoutConnectionEls) {
+        const coord = BOARD.pinCoords[pin];
+        if (!coord) continue;
+        const pinX = imgRect.left + (coord[0] / 100) * imgRect.width;
+        const pinY = imgRect.top + (coord[1] / 100) * imgRect.height;
+        // Skip a wire whose pin has been panned/zoomed outside the visible
+        // diagram viewport rather than draw it through the crop.
+        if (pinX < viewerRect.left || pinX > viewerRect.right || pinY < viewerRect.top || pinY > viewerRect.bottom) continue;
+
+        const cardRect = cardEl.getBoundingClientRect();
+        const startX = pinX - wrapRect.left;
+        const startY = pinY - wrapRect.top;
+        const endX = cardRect.left - wrapRect.left;
+        const endY = cardRect.top + cardRect.height / 2 - wrapRect.top;
+        const midX = (startX + endX) / 2;
+
+        const path = document.createElementNS(SVG_NS, "path");
+        path.setAttribute("class", "wire-path");
+        path.setAttribute("d", `M ${startX} ${startY} C ${midX} ${startY}, ${midX} ${endY}, ${endX} ${endY}`);
+        pinoutWires.appendChild(path);
+    }
+}
+
+pinoutDetails.addEventListener("toggle", () => {
+    if (pinoutDetails.open) renderWires();
+});
+window.addEventListener("resize", () => renderWires());
+pinoutImg.addEventListener("load", () => renderWires());
+
 // --- Pinout diagram zoom/pan -------------------------------------------
 // Wheel/pinch to zoom (about the cursor/pinch midpoint), drag to pan.
 // Pointer Events cover both mouse and touch in one code path; a second
@@ -59,8 +225,9 @@ let pinoutPanStart = null; // { x, y, origX, origY }
 let pinoutPinchStart = null; // { dist, scale, x, y, midX, midY }
 
 function applyPinoutTransform() {
-    pinoutImg.style.transform = `translate(${pinoutX}px, ${pinoutY}px) scale(${pinoutScale})`;
+    pinoutStage.style.transform = `translate(${pinoutX}px, ${pinoutY}px) scale(${pinoutScale})`;
     pinoutZoomReset.textContent = `${Math.round(pinoutScale * 100)}%`;
+    renderWires();
 }
 
 function resetPinoutZoom() {
@@ -455,6 +622,8 @@ function renderSensors() {
         conflictBox.hidden = true;
         generateBtn.disabled = false;
     }
+    renderPinoutOverlay();
+    renderConnections();
 }
 
 generateBtn.addEventListener("click", async () => {
@@ -498,4 +667,21 @@ themeToggle.addEventListener("change", () => {
     const next = themeToggle.checked ? "dark" : "light";
     localStorage.setItem("theme", next);
     applyTheme(next);
+});
+
+// --- Experimental/preview notice ------------------------------------------
+// Shown once per browser (persisted in localStorage) until acknowledged.
+const experimentalBackdrop = document.getElementById("experimental-backdrop");
+const experimentalModal = document.getElementById("experimental-modal");
+const experimentalContinue = document.getElementById("experimental-continue");
+
+if (!localStorage.getItem("experimentalAck")) {
+    experimentalBackdrop.hidden = false;
+    experimentalModal.hidden = false;
+}
+
+experimentalContinue.addEventListener("click", () => {
+    localStorage.setItem("experimentalAck", "1");
+    experimentalBackdrop.hidden = true;
+    experimentalModal.hidden = true;
 });
