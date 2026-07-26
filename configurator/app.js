@@ -342,6 +342,19 @@ function maxInstancesFor(sensor) {
     return sensor.maxInstances || Infinity;
 }
 
+// `maxInstances: 1` means the sensor's CRSF frame type has no source_id
+// field -- there's no way for the receiver to tell two instances apart.
+// That's just as true across two *different* sensor ids that emit the same
+// frame (e.g. two distinct GPS modules both sending 0x02) as it is for two
+// instances of the same one, so the cap is enforced per frame, not per id.
+function frameGroupSensors(sensor) {
+    return Object.values(SENSORS).filter((s) => s.maxInstances === 1 && s.frame === sensor.frame);
+}
+
+function frameGroupHasInstance(sensor, excludingSelf) {
+    return frameGroupSensors(sensor).some((s) => (excludingSelf && s.id === sensor.id ? false : state[s.id].length > 0));
+}
+
 function defaultConfigFor(sensor) {
     const config = {};
     for (const field of sensor.configFields || []) config[field.key] = field.default;
@@ -432,7 +445,12 @@ function renderSensorGroup(sensor) {
     header.innerHTML = `<span class="sensor-name">${sensor.name}</span>`;
 
     const max = maxInstancesFor(sensor);
-    const atMax = state[sensor.id].length >= max;
+    const atOwnMax = state[sensor.id].length >= max;
+    // Own count is already covered by atOwnMax; this only adds the case
+    // where a *sibling* sensor sharing the same source_id-less frame holds
+    // the slot instead.
+    const blockedBySibling = sensor.maxInstances === 1 && frameGroupHasInstance(sensor, true);
+    const atMax = atOwnMax || blockedBySibling;
     const noPinsLeft = sensor.pinRole && availablePins(sensor.pinRole, null).length === 0;
 
     const addBtn = document.createElement("button");
@@ -441,7 +459,9 @@ function renderSensorGroup(sensor) {
     addBtn.textContent = "+ Add";
     if (atMax || noPinsLeft) {
         addBtn.disabled = true;
-        addBtn.title = atMax ? "Maximum instances reached" : "No free pins left for this sensor type";
+        addBtn.title = blockedBySibling
+            ? `Only one ${sensor.frame} sensor can be added at a time`
+            : atMax ? "Maximum instances reached" : "No free pins left for this sensor type";
     }
     addBtn.addEventListener("click", () => {
         if (sensor.pinRole) {

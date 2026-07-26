@@ -15,14 +15,18 @@
  *
  * Every sensor uses the same "+ Add" UI (see app.js); `maxInstances`
  * caps how many can be added (default unlimited if omitted). Sensors with
- * `pinRole` set (hall_3144e/mf58_ntc/voltage_divider/gps_m100_5883) get a
- * per-instance pin picker; ina226/bmp280 have no `pinRole` -- they share a
- * fixed I2C bus, so "+ Add" just adds/removes the sensor, no pin to pick.
+ * `pinRole` set (hall_3144e/mf58_ntc/voltage_divider/gps_m100_5883/
+ * generic_nmea_gps) get a per-instance pin picker; ina226/bmp280 have no
+ * `pinRole` -- they share a fixed I2C bus, so "+ Add" just adds/removes the
+ * sensor, no pin to pick.
  *
- * `maxInstances: 1` on gps_m100_5883/ina226/bmp280 isn't a UI nicety --
- * their CRSF frame types (0x02, 0x08, 0x09) have no `source_id` field, so
- * a second instance would silently overwrite the first's reading with no
- * way for the receiver to tell them apart. hall_3144e/mf58_ntc/
+ * `maxInstances: 1` on gps_m100_5883/generic_nmea_gps/ina226/bmp280 isn't a
+ * UI nicety -- their CRSF frame types (0x02, 0x08, 0x09) have no
+ * `source_id` field, so a second instance would silently overwrite the
+ * first's reading with no way for the receiver to tell them apart.
+ * gps_m100_5883 and generic_nmea_gps both use frame 0x02, so app.js's
+ * frameGroupHasInstance() enforces the cap *across* the two of them, not
+ * just within each -- see that function for why. hall_3144e/mf58_ntc/
  * voltage_divider's frames (0x0C, 0x0D, 0x0E) all carry a source_id, so
  * they're uncapped.
  */
@@ -248,6 +252,35 @@ const SENSORS = {
         ],
         instanceSymbols: [
             "gps_m100_5883_init", "gps_m100_5883_poll_and_send",
+            "PIN_GPS_RX", "GPS_BAUD",
+        ],
+    },
+    generic_nmea_gps: {
+        id: "generic_nmea_gps",
+        name: "Generic NMEA GPS Module",
+        icon: "🛰️",
+        frame: "0x02 GPS",
+        files: [
+            "firmware/sensors/generic_nmea_gps/generic_nmea_gps.h",
+            "firmware/sensors/generic_nmea_gps/generic_nmea_gps.cpp",
+        ],
+        usesI2c: false,
+        maxInstances: 1, // 0x02 GPS frame has no source_id -- one only
+        pinRole: "digital", // RX pin on UART1; TX is left disconnected
+        pinDefine: "PIN_GPS_RX",
+        sourceIdDefine: null, // no source_id field in this frame type
+        initCall: (i) => `generic_nmea_gps_init_${i}();`,
+        pollCall: (i) => `generic_nmea_gps_poll_and_send_${i}();`,
+        configDefines: ["GPS_BAUD"],
+        // Same parser as gps_m100_5883 under the hood (plain GGA+RMC NMEA,
+        // talker ID not checked) -- this entry exists for any NMEA module
+        // that isn't specifically the M100-5883, so the baud default is
+        // just the NMEA-standard 9600 rather than a vendor default.
+        configFields: [
+            { key: "GPS_BAUD", label: "Baud rate", default: 9600 },
+        ],
+        instanceSymbols: [
+            "generic_nmea_gps_init", "generic_nmea_gps_poll_and_send",
             "PIN_GPS_RX", "GPS_BAUD",
         ],
     },

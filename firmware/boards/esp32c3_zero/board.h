@@ -35,7 +35,7 @@
 // known limitation worth re-checking against a multimeter on real hardware.
 #define ADC_MAX_COUNTS 4095
 
-// GPS_SERIAL_BEGIN() lets gps_m100_5883.cpp start GpsSerial without knowing
+// GPS_SERIAL_BEGIN() lets a GPS sensor module start GpsSerial without knowing
 // whether the board backs it with a HardwareSerial (as here) or a
 // SoftwareSerial -- their begin() signatures differ, so each board defines
 // this macro to match its own type.
