@@ -11,6 +11,7 @@
 #include "board.h"
 #include "crsf.h"
 #include <Arduino.h>
+#include <ctype.h>
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
@@ -91,16 +92,29 @@ static void parse_rmc(char *body) {
     g_heading_100 = (uint16_t)(atof(course_f) * 100.0f);
 }
 
+// XORs every byte between '$' and '*' and compares against the two hex
+// digits after '*'. A dropped/corrupted byte (SoftwareSerial on the Pro
+// Mini has no hardware buffering, so noise or a busy main loop can lose
+// one) still forms a line that looks well-formed but carries garbage
+// field values -- without this check that garbage gets parsed as if valid.
+static bool checksum_ok(const char *line, const char *star) {
+    if (!star || !isxdigit((unsigned char)star[1]) || !isxdigit((unsigned char)star[2])) return false;
+    uint8_t calc = 0;
+    for (const char *p = line + 1; p < star; p++) calc ^= (uint8_t)*p;
+    return calc == (uint8_t)strtoul(star + 1, NULL, 16);
+}
+
 static void feed_char(char c) {
     if (c == '\r') return;
     if (c == '\n') {
         line[line_len] = '\0';
         if (line_len > 6 && line[0] == '$') {
-            char *star = strchr(line, '*'); // strip checksum suffix, not verified
-            if (star) *star = '\0';
-
-            if (strncmp(line + 3, "GGA,", 4) == 0) parse_gga(line + 7);
-            else if (strncmp(line + 3, "RMC,", 4) == 0) parse_rmc(line + 7);
+            char *star = strchr(line, '*');
+            if (checksum_ok(line, star)) {
+                *star = '\0';
+                if (strncmp(line + 3, "GGA,", 4) == 0) parse_gga(line + 7);
+                else if (strncmp(line + 3, "RMC,", 4) == 0) parse_rmc(line + 7);
+            }
         }
         line_len = 0;
         return;
