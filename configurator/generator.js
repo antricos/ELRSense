@@ -257,9 +257,17 @@ async function generateArduinoSingleFile(boardId, baud, selection) {
 
         hText = renameSymbols(hText, sensor.instanceSymbols, suffix);
 
+        // Only symbols actually listed in instanceSymbols were renamed above
+        // -- a pin/source-id macro left out on purpose (e.g. GPS's
+        // PIN_GPS_RX, referenced unsuffixed by board.h/board.cpp) must stay
+        // unsuffixed here too, or the config block would define a name
+        // nothing else refers to.
+        const pinSuffix = sensor.instanceSymbols.includes(sensor.pinDefine) ? suffix : "";
+        const sourceIdSuffix = sensor.instanceSymbols.includes(sensor.sourceIdDefine) ? suffix : "";
+
         configLines.push(`// --- ${label} ---`);
-        configLines.push(`#define ${sensor.pinDefine}${suffix} ${pin}   // GPIO${pin}`);
-        if (sensor.sourceIdDefine) configLines.push(`#define ${sensor.sourceIdDefine}${suffix} ${sourceId}`);
+        configLines.push(`#define ${sensor.pinDefine}${pinSuffix} ${pin}   // GPIO${pin}`);
+        if (sensor.sourceIdDefine) configLines.push(`#define ${sensor.sourceIdDefine}${sourceIdSuffix} ${sourceId}`);
         for (const line of entries) configLines.push(renameSymbols(line, sensor.instanceSymbols, suffix));
         configLines.push("");
 

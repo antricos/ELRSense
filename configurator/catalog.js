@@ -250,9 +250,13 @@ const SENSORS = {
         configFields: [
             { key: "GPS_BAUD", label: "Baud rate", default: 9600 },
         ],
+        // PIN_GPS_RX/GPS_BAUD are deliberately NOT in this list: board.h's
+        // GPS_SERIAL_BEGIN() macro and board.cpp's GpsSerial constructor
+        // reference those names unsuffixed (board-level, not per-instance),
+        // and maxInstances: 1 means there's never a second instance to
+        // collide with anyway.
         instanceSymbols: [
             "gps_m100_5883_init", "gps_m100_5883_poll_and_send",
-            "PIN_GPS_RX", "GPS_BAUD",
         ],
     },
     generic_nmea_gps: {
@@ -279,9 +283,10 @@ const SENSORS = {
         configFields: [
             { key: "GPS_BAUD", label: "Baud rate", default: 9600 },
         ],
+        // See gps_m100_5883's instanceSymbols comment: PIN_GPS_RX/GPS_BAUD
+        // stay unsuffixed on purpose, to match board.h/board.cpp.
         instanceSymbols: [
             "generic_nmea_gps_init", "generic_nmea_gps_poll_and_send",
-            "PIN_GPS_RX", "GPS_BAUD",
         ],
     },
     ina226: {
