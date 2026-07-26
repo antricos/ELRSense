@@ -26,7 +26,6 @@ static uint16_t g_alt_m_offset = 1000; // CRSF GPS altitude field = meters + 100
 static uint16_t g_groundspeed_100 = 0;
 static uint16_t g_heading_100 = 0;
 static uint8_t g_satellites = 0;
-static bool g_has_fix = false;
 
 // Advances *p past the next comma; returns the field that just ended
 // (null-terminated in place, splitting the line buffer).
@@ -68,11 +67,7 @@ static void parse_gga(char *body) {
     next_field(&p); // HDOP
     char *alt_f = next_field(&p);
 
-    if (fixq_f[0] == '0' || fixq_f[0] == '\0') {
-        g_has_fix = false;
-        return;
-    }
-    g_has_fix = true;
+    if (fixq_f[0] == '0' || fixq_f[0] == '\0') return;
 
     g_lat_1e7 = nmea_coord_to_1e7(lat_f, ns_f[0]);
     g_lon_1e7 = nmea_coord_to_1e7(lon_f, ew_f[0]);
@@ -122,8 +117,9 @@ void gps_m100_5883_init() {
 void gps_m100_5883_poll_and_send() {
     while (GpsSerial.available()) feed_char((char)GpsSerial.read());
 
-    if (!g_has_fix) return;
-
+    // Sent even without a fix (fields hold their zero/no-fix defaults until
+    // GGA reports one) so the radio shows the sensor as present rather than
+    // missing entirely while waiting on satellites.
     uint8_t payload[15];
     uint8_t len = crsf_pack_gps(payload, g_lat_1e7, g_lon_1e7,
                                  g_groundspeed_100, g_heading_100,
