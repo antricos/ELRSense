@@ -183,7 +183,7 @@ async function generateArduinoSingleFile(boardId, baud, selection) {
     const singleSelected = Object.values(SENSORS).filter((s) => !s.pinRole && (selection[s.id] || []).length > 0);
 
     const anyI2c = singleSelected.some((s) => s.usesI2c);
-    const hasGps = multiInstances.some((inst) => inst.sensor.id === "gps_m100_5883");
+    const hasGps = multiInstances.some((inst) => inst.sensor.frame === "0x02 GPS");
     const hasAdc = multiInstances.some((inst) => inst.sensor.usesAdc);
 
     const sensorList = [...multiInstances.map((i) => i.label), ...singleSelected.map((s) => s.name)].join(", ") || "(none)";
