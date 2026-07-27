@@ -261,7 +261,7 @@ const SENSORS = {
     },
     generic_nmea_gps: {
         id: "generic_nmea_gps",
-        name: "Generic NMEA GPS Module",
+        name: "GY-GPS6Mv2 GPS Module",
         icon: "🛰️",
         frame: "0x02 GPS",
         files: [
@@ -309,9 +309,9 @@ const SENSORS = {
     },
     voltage_divider: {
         id: "voltage_divider",
-        name: "Voltage Divider (plain)",
+        name: "Voltage Divider",
         icon: "⚡",
-        wiringImage: "recources/Voltage Divider (plain).jpg",
+        schematicImage: "recources/Voltage Divider.jpg",
         frame: "0x0E Voltages",
         files: [
             "firmware/sensors/voltage_divider/voltage_divider.h",
@@ -355,9 +355,9 @@ const SENSORS = {
     },
     mf58_ntc: {
         id: "mf58_ntc",
-        name: "MF58 NTC Thermistor (voltage divider)",
+        name: "MF58 NTC Thermistor",
         icon: "🌡️",
-        wiringImage: "recources/MF58 NTC Thermistor (voltage divider).jpg",
+        schematicImage: "recources/MF58 NTC Thermistor.jpg",
         frame: "0x0D Temperature",
         files: [
             "firmware/sensors/mf58_ntc/mf58_ntc.h",

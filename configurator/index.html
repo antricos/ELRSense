@@ -437,7 +437,6 @@
     .voltage-range-input { border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); }
 
     .remove-instance-btn {
-        margin-left: auto;
         font-size: 0.78rem;
         color: var(--danger);
         background: transparent;
@@ -448,6 +447,19 @@
         transition: background 0.15s ease, border-color 0.15s ease;
     }
     .remove-instance-btn:hover { background: var(--danger-bg); border-color: var(--danger); }
+
+    .schematic-link-btn {
+        margin-left: auto;
+        font-size: 0.78rem;
+        color: var(--accent);
+        background: transparent;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        padding: 0.25rem 0.6rem;
+        cursor: pointer;
+        transition: background 0.15s ease, border-color 0.15s ease;
+    }
+    .schematic-link-btn:hover { background: color-mix(in srgb, var(--accent) 15%, transparent); border-color: var(--accent); }
 
     #conflict-box {
         margin-top: 0.85rem;

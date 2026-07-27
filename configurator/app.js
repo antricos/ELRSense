@@ -545,6 +545,15 @@ function renderInstanceRow(sensor, inst, index, ownCount) {
         row.appendChild(fieldLabel);
     }
 
+    if (sensor.schematicImage) {
+        const schematicBtn = document.createElement("button");
+        schematicBtn.type = "button";
+        schematicBtn.className = "schematic-link-btn";
+        schematicBtn.textContent = "Schematic";
+        schematicBtn.addEventListener("click", () => openSensorInfo(sensor.icon, sensor.name, sensor.schematicImage));
+        row.appendChild(schematicBtn);
+    }
+
     const removeBtn = document.createElement("button");
     removeBtn.type = "button";
     removeBtn.className = "remove-instance-btn";
