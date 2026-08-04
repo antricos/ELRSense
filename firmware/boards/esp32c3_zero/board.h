@@ -19,12 +19,12 @@
 // picked per instance by the configurator, not fixed here -- see
 // catalog.js's pinPool/instanceSymbols. Only the fixed, board-wide pins
 // live here.
-#define PIN_I2C_SDA           8    // INA226 / BMP280
+#define PIN_I2C_SDA           8    // INA226 / BMP280 / MPU6050
 #define PIN_I2C_SCL           9
 #define PIN_CRSF_RX           20   // UART0 RX
 #define PIN_CRSF_TX           21   // UART0 TX
 
-// I2C_INIT() lets INA226/BMP280 share one board-agnostic call: the C3
+// I2C_INIT() lets INA226/BMP280/MPU6050 share one board-agnostic call: the C3
 // needs explicit SDA/SCL pins passed to Wire.begin(), unlike AVR's fixed
 // hardware TWI pins.
 #define I2C_INIT() Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL)

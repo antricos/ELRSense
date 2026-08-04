@@ -15,20 +15,26 @@
  *
  * Every sensor uses the same "+ Add" UI (see app.js); `maxInstances`
  * caps how many can be added (default unlimited if omitted). Sensors with
- * `pinRole` set (hall_3144e/mf58_ntc/voltage_divider/gps_m100_5883/
- * generic_nmea_gps) get a per-instance pin picker; ina226/bmp280 have no
- * `pinRole` -- they share a fixed I2C bus, so "+ Add" just adds/removes the
- * sensor, no pin to pick.
+ * `pinRole` set (hall_3144e/hall_ky003/mhb_ir/mf58_ntc/voltage_divider/
+ * gps_m100_5883/generic_nmea_gps) get a per-instance pin picker;
+ * ina226/bmp280/mpu6050 have no `pinRole` -- they share a fixed I2C bus,
+ * so "+ Add" just adds/removes the sensor, no pin to pick.
  *
- * `maxInstances: 1` on gps_m100_5883/generic_nmea_gps/ina226/bmp280 isn't a
- * UI nicety -- their CRSF frame types (0x02, 0x08, 0x09) have no
- * `source_id` field, so a second instance would silently overwrite the
+ * `maxInstances: 1` on gps_m100_5883/generic_nmea_gps/ina226/bmp280/mpu6050
+ * isn't a UI nicety -- their CRSF frame types (0x02, 0x08, 0x09, 0x13) have
+ * no `source_id` field, so a second instance would silently overwrite the
  * first's reading with no way for the receiver to tell them apart.
  * gps_m100_5883 and generic_nmea_gps both use frame 0x02, so app.js's
  * frameGroupHasInstance() enforces the cap *across* the two of them, not
- * just within each -- see that function for why. hall_3144e/mf58_ntc/
- * voltage_divider's frames (0x0C, 0x0D, 0x0E) all carry a source_id, so
- * they're uncapped.
+ * just within each -- see that function for why. hall_3144e/hall_ky003/
+ * mhb_ir/mf58_ntc/voltage_divider's frames (0x0C, 0x0D, 0x0E) all carry a
+ * source_id, so they're uncapped -- and since hall_3144e/hall_ky003/mhb_ir
+ * all share frame 0x0C RPM, generator.js's sourceIdCounters gives all
+ * three one continuous numbering instead of each restarting at its own
+ * sourceIdBase (see that comment for why), and each has its own
+ * uniquely-prefixed macro names (HALL_, KY003_, MHB_IR_) rather than
+ * reusing another's, since the generator's per-instance suffix alone
+ * isn't enough to keep them apart (see hall_ky003's comment for why).
  */
 
 const BOARDS = {
@@ -76,6 +82,7 @@ const BOARDS = {
             perSensor: {
                 ina226: ["PIN_I2C_SDA", "PIN_I2C_SCL"],
                 bmp280: ["PIN_I2C_SDA", "PIN_I2C_SCL"],
+                mpu6050: ["PIN_I2C_SDA", "PIN_I2C_SCL"],
             },
         },
         crsfInitCall: "crsf_uart_init(CRSF_BAUD_RATE);",
@@ -161,6 +168,7 @@ const BOARDS = {
             perSensor: {
                 ina226: ["PIN_I2C_SDA", "PIN_I2C_SCL"],
                 bmp280: ["PIN_I2C_SDA", "PIN_I2C_SCL"],
+                mpu6050: ["PIN_I2C_SDA", "PIN_I2C_SCL"],
             },
         },
         crsfInitCall: "crsf_uart_init(CRSF_BAUD_RATE);",
@@ -196,6 +204,7 @@ const SENSOR_GROUPS = [
     { id: "0x0D Temperature" },
     { id: "0x0C RPM" },
     { id: "0x02 GPS" },
+    { id: "0x13 Accel Gyro" },
 ].map((g) => ({ ...g, label: g.id }));
 
 function sensorGroupId(sensor) {
@@ -205,7 +214,7 @@ function sensorGroupId(sensor) {
 const SENSORS = {
     hall_3144e: {
         id: "hall_3144e",
-        name: "3144E Hall Sensor Module",
+        name: "LM393 Hall Speed Sensor Module (3144E)",
         icon: "⚙️",
         frame: "0x0C RPM",
         files: [
@@ -214,7 +223,12 @@ const SENSORS = {
         ],
         usesI2c: false,
         pinRole: "interrupt", // pulse-count interrupt input, no ADC needed
-        sourceIdBase: 0, // RPM source_id: 0 = Motor 1, 1 = Motor 2, ... (crsf.md)
+        // RPM source_id: 0 = Motor 1, 1 = Motor 2, ... (crsf.md). Shared
+        // with hall_ky003 -- see generateArduinoSingleFile()'s
+        // sourceIdCounters: whichever of the two a user adds instances of
+        // first gets this floor, the other just continues counting from
+        // there, so mixing both types on one board can't collide.
+        sourceIdBase: 0,
         pinDefine: "PIN_HALL_3144E",
         sourceIdDefine: "HALL_RPM_SOURCE_ID",
         initCall: (i) => `hall_3144e_init_${i}();`,
@@ -223,6 +237,64 @@ const SENSORS = {
         instanceSymbols: [
             "hall_3144e_init", "hall_3144e_poll_and_send",
             "PIN_HALL_3144E", "HALL_RPM_SOURCE_ID", "HALL_PULSES_PER_REV",
+        ],
+    },
+    hall_ky003: {
+        id: "hall_ky003",
+        name: "KY-003 Hall Sensor Module (3144E)",
+        icon: "⚙️",
+        frame: "0x0C RPM",
+        files: [
+            "firmware/sensors/hall_ky003/hall_ky003.h",
+            "firmware/sensors/hall_ky003/hall_ky003.cpp",
+        ],
+        usesI2c: false,
+        pinRole: "interrupt", // pulse-count interrupt input, no ADC needed
+        // See hall_3144e's sourceIdBase comment -- same shared-counter
+        // scheme, same starting point (both are bare/conditioned 3144E
+        // digital Hall switches wired the same way). Macro names below are
+        // KY003_*, not HALL_* -- see hall_ky003.h: since both sensors can
+        // be added to the same board at once, reusing hall_3144e's literal
+        // macro names here would let generator.js's per-instance suffixing
+        // (scoped to each sensor's own instance array, not globally
+        // unique) produce identically-named #defines that silently
+        // collide instead of staying naturally distinct.
+        sourceIdBase: 0,
+        pinDefine: "PIN_HALL_KY003",
+        sourceIdDefine: "KY003_RPM_SOURCE_ID",
+        initCall: (i) => `hall_ky003_init_${i}();`,
+        pollCall: (i) => `hall_ky003_poll_and_send_${i}();`,
+        configDefines: ["KY003_PULSES_PER_REV"],
+        instanceSymbols: [
+            "hall_ky003_init", "hall_ky003_poll_and_send",
+            "PIN_HALL_KY003", "KY003_RPM_SOURCE_ID", "KY003_PULSES_PER_REV",
+        ],
+    },
+    mhb_ir: {
+        id: "mhb_ir",
+        name: "MH-B IR Reflective Sensor Module",
+        icon: "📡",
+        frame: "0x0C RPM",
+        files: [
+            "firmware/sensors/mhb_ir/mhb_ir.h",
+            "firmware/sensors/mhb_ir/mhb_ir.cpp",
+        ],
+        usesI2c: false,
+        pinRole: "interrupt", // pulse-count interrupt input, no ADC needed
+        // See hall_3144e's sourceIdBase comment -- same shared-counter
+        // scheme, same starting point (an optical tachometer target is
+        // still just another motor slot as far as source_id is
+        // concerned). Macro names below are MHB_IR_, not HALL_/KY003_,
+        // for the same reuse-avoidance reason as hall_ky003's.
+        sourceIdBase: 0,
+        pinDefine: "PIN_MHB_IR",
+        sourceIdDefine: "MHB_IR_RPM_SOURCE_ID",
+        initCall: (i) => `mhb_ir_init_${i}();`,
+        pollCall: (i) => `mhb_ir_poll_and_send_${i}();`,
+        configDefines: ["MHB_IR_PULSES_PER_REV"],
+        instanceSymbols: [
+            "mhb_ir_init", "mhb_ir_poll_and_send",
+            "PIN_MHB_IR", "MHB_IR_RPM_SOURCE_ID", "MHB_IR_PULSES_PER_REV",
         ],
     },
     gps_m100_5883: {
@@ -241,16 +313,24 @@ const SENSORS = {
         sourceIdDefine: null, // no source_id field in this frame type
         initCall: (i) => `gps_m100_5883_init_${i}();`,
         pollCall: (i) => `gps_m100_5883_poll_and_send_${i}();`,
-        configDefines: ["GPS_BAUD"],
+        configDefines: ["GPS_BAUD", "GPS_SEND_TIME", "GPS_SEND_EXTENDED"],
         // Exposed as a per-instance number input in the UI (see
         // voltage_divider/mf58_ntc above) -- the NMEA baud rate the
         // attached GPS module actually talks, in case it's not a u-blox
         // M10 at its 9600 default. No `scale`: the field's value is the
-        // #define's value directly.
+        // #define's value directly. GPS_SEND_TIME/GPS_SEND_EXTENDED are
+        // `type: "toggle"` fields -- rendered as an on/off slider rather
+        // than a number input (see app.js's renderInstanceRow) -- that
+        // enable sending CRSF 0x03 GPS Time / 0x06 GPS Extended alongside
+        // the always-on 0x02 GPS frame; see gps_m100_5883.cpp for what
+        // populates them from GGA/RMC.
         configFields: [
             { key: "GPS_BAUD", label: "Baud rate", default: 9600 },
+            { key: "GPS_SEND_TIME", label: "Send GPS Time (0x03)", type: "toggle", default: false },
+            { key: "GPS_SEND_EXTENDED", label: "Send GPS Extended (0x06)", type: "toggle", default: false },
         ],
-        // PIN_GPS_RX/GPS_BAUD are deliberately NOT in this list: board.h's
+        // PIN_GPS_RX/GPS_BAUD/GPS_SEND_TIME/GPS_SEND_EXTENDED are
+        // deliberately NOT in this list: board.h's
         // GPS_SERIAL_BEGIN() macro and board.cpp's GpsSerial constructor
         // reference those names unsuffixed (board-level, not per-instance),
         // and maxInstances: 1 means there's never a second instance to
@@ -275,16 +355,21 @@ const SENSORS = {
         sourceIdDefine: null, // no source_id field in this frame type
         initCall: (i) => `generic_nmea_gps_init_${i}();`,
         pollCall: (i) => `generic_nmea_gps_poll_and_send_${i}();`,
-        configDefines: ["GPS_BAUD"],
+        configDefines: ["GPS_BAUD", "GPS_SEND_TIME", "GPS_SEND_EXTENDED"],
         // Same parser as gps_m100_5883 under the hood (plain GGA+RMC NMEA,
         // talker ID not checked) -- this entry exists for any NMEA module
         // that isn't specifically the M100-5883, so the baud default is
         // just the NMEA-standard 9600 rather than a vendor default.
+        // GPS_SEND_TIME/GPS_SEND_EXTENDED: see gps_m100_5883's matching
+        // configFields comment -- same toggle-rendered optional frames.
         configFields: [
             { key: "GPS_BAUD", label: "Baud rate", default: 9600 },
+            { key: "GPS_SEND_TIME", label: "Send GPS Time (0x03)", type: "toggle", default: false },
+            { key: "GPS_SEND_EXTENDED", label: "Send GPS Extended (0x06)", type: "toggle", default: false },
         ],
-        // See gps_m100_5883's instanceSymbols comment: PIN_GPS_RX/GPS_BAUD
-        // stay unsuffixed on purpose, to match board.h/board.cpp.
+        // See gps_m100_5883's instanceSymbols comment: PIN_GPS_RX/GPS_BAUD/
+        // GPS_SEND_TIME/GPS_SEND_EXTENDED stay unsuffixed on purpose, to
+        // match board.h/board.cpp.
         instanceSymbols: [
             "generic_nmea_gps_init", "generic_nmea_gps_poll_and_send",
         ],
@@ -402,5 +487,23 @@ const SENSORS = {
         // board from BOARD.i2cPins (this note would go stale otherwise:
         // the I2C bus is on different pins per board).
         configDefines: ["BMP280_I2C_ADDR"],
+    },
+    mpu6050: {
+        id: "mpu6050",
+        name: "GY-521 (MPU-6050) Accel/Gyro Module",
+        icon: "🧭",
+        frame: "0x13 Accel Gyro",
+        files: [
+            "firmware/sensors/mpu6050/mpu6050.h",
+            "firmware/sensors/mpu6050/mpu6050.cpp",
+        ],
+        initCall: "mpu6050_init();",
+        pollCall: "mpu6050_poll_and_send();",
+        usesI2c: true,
+        maxInstances: 1, // 0x13 Accel Gyro frame has no source_id -- one only
+        // No fixed pin text here -- app.js synthesizes it per selected
+        // board from BOARD.i2cPins (this note would go stale otherwise:
+        // the I2C bus is on different pins per board).
+        configDefines: ["MPU6050_I2C_ADDR"],
     },
 };

@@ -76,7 +76,7 @@ function renderPinoutOverlay() {
     for (const [pin, reason] of Object.entries(BOARD.reservedPins)) {
         addMarker(Number(pin), "reserved", `${pinName(Number(pin))} -- reserved (${reason})`);
     }
-    if (state.ina226.length || state.bmp280.length) {
+    if (Object.values(SENSORS).some((s) => s.usesI2c && state[s.id].length)) {
         for (const [pin, reason] of Object.entries(BOARD.i2cPins)) {
             addMarker(Number(pin), "i2c-active", `${pinName(Number(pin))} -- ${reason}`);
         }
@@ -393,7 +393,7 @@ function claimedPins() {
 
 function reservedPinSet() {
     const set = new Set(Object.keys(BOARD.reservedPins).map(Number));
-    if (state.ina226.length || state.bmp280.length) {
+    if (Object.values(SENSORS).some((s) => s.usesI2c && state[s.id].length)) {
         for (const p of Object.keys(BOARD.i2cPins).map(Number)) set.add(p);
     }
     return set;
@@ -472,6 +472,17 @@ function renderInstanceRow(sensor, inst, index, ownCount) {
             renderSensors();
         });
         row.appendChild(select);
+
+        // Forces configFields (baud rate, toggles, ...) onto their own line
+        // below the label/pin select, regardless of how much horizontal
+        // space the label text leaves -- without this, a short sensor name
+        // (e.g. "GY-GPS6Mv2") lets the first configField wrap up next to
+        // the pin select instead of sitting with the rest on line 2, while
+        // a long one (e.g. "HGLRC M100-5883 (M10)") pushes it down anyway,
+        // so the same sensor category rendered inconsistently row to row.
+        const rowBreak = document.createElement("span");
+        rowBreak.className = "instance-row-break";
+        row.appendChild(rowBreak);
     }
 
     // sensor.voltageRange (voltage_divider only) drives a derived,
@@ -495,6 +506,36 @@ function renderInstanceRow(sensor, inst, index, ownCount) {
     }
 
     for (const field of sensor.configFields || []) {
+        if (field.type === "toggle") {
+            // On/off slider (same visual pattern as the header's #theme-toggle,
+            // scaled down to fit an instance row) instead of a number input --
+            // these back a plain 0/1 #define, not a numeric value.
+            const fieldLabel = document.createElement("label");
+            fieldLabel.className = "config-field-toggle-label";
+            fieldLabel.title = field.label;
+
+            const input = document.createElement("input");
+            input.type = "checkbox";
+            input.className = "config-field-toggle-input";
+            input.checked = !!inst.config[field.key];
+            input.addEventListener("change", () => {
+                inst.config[field.key] = input.checked;
+            });
+            fieldInputs[field.key] = input;
+
+            const track = document.createElement("span");
+            track.className = "config-field-toggle-track";
+            track.innerHTML = `<span class="config-field-toggle-thumb"></span>`;
+
+            const text = document.createElement("span");
+            text.className = "config-field-toggle-text";
+            text.textContent = field.label;
+
+            fieldLabel.append(input, track, text);
+            row.appendChild(fieldLabel);
+            continue;
+        }
+
         const fieldLabel = document.createElement("label");
         fieldLabel.className = "config-field-label";
         fieldLabel.textContent = field.label + (field.unit ? ` (${field.unit})` : "");

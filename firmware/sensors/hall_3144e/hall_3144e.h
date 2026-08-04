@@ -1,5 +1,9 @@
 /**
- * 3144E Hall-effect sensor, interrupt pulse-counting -> CRSF RPM (0x0C).
+ * LM393 + 3144E Hall speed sensor module (LM393 comparator with an onboard
+ * sensitivity trimmer conditioning the bare 3144E's output -- the common
+ * "Hall Sensor Motor Speed Measurement Module" bundled in robot-car kits).
+ * Interrupt pulse-counting -> CRSF RPM (0x0C). See hall_ky003.cpp for the
+ * bare-chip module this shares its driver logic with.
  */
 #pragma once
 #include <stdint.h>

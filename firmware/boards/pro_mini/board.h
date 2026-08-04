@@ -28,7 +28,7 @@
 #define PIN_CRSF_RX           0    // UART0 RX (unused, TX-only)
 #define PIN_CRSF_TX           1    // UART0 TX
 
-// I2C_INIT() lets INA226/BMP280 share one board-agnostic call: AVR's
+// I2C_INIT() lets INA226/BMP280/MPU6050 share one board-agnostic call: AVR's
 // hardware TWI pins are fixed, so Wire.begin() takes no pin arguments here
 // (unlike the ESP32-C3, which needs explicit SDA/SCL pins passed in).
 #define I2C_INIT() Wire.begin()

@@ -25,11 +25,14 @@ void crsf_write_byte(uint8_t b);
 
 typedef enum {
     CRSF_FRAMETYPE_GPS             = 0x02,
+    CRSF_FRAMETYPE_GPS_TIME        = 0x03,
+    CRSF_FRAMETYPE_GPS_EXTENDED    = 0x06,
     CRSF_FRAMETYPE_BATTERY         = 0x08,
     CRSF_FRAMETYPE_BARO_ALT_VSPEED = 0x09,
     CRSF_FRAMETYPE_RPM             = 0x0C,
     CRSF_FRAMETYPE_TEMP            = 0x0D,
     CRSF_FRAMETYPE_VOLTAGES        = 0x0E,
+    CRSF_FRAMETYPE_ACCEL_GYRO      = 0x13,
 } crsf_frame_type_t;
 
 // CRC-8, polynomial 0xD5 (Type + Payload only, per CRC section of crsf.md).
@@ -51,6 +54,25 @@ uint8_t crsf_pack_gps(uint8_t *buf,
                        uint16_t heading_deg_100,
                        uint16_t altitude_m_offset,
                        uint8_t satellites);
+
+// 0x03 GPS Time (10 bytes). Needed for sync with the ublox time pulse
+// (crsf.md: max offset +/-10ms); year is the full calendar year (e.g. 2026),
+// not an offset from 1900/2000.
+uint8_t crsf_pack_gps_time(uint8_t *buf,
+                            int16_t year, uint8_t month, uint8_t day,
+                            uint8_t hour, uint8_t minute, uint8_t second,
+                            uint16_t millisecond);
+
+// 0x06 GPS Extended (21 bytes). Fields a plain GGA/RMC parser can't derive
+// (h_speed_acc, track_acc, h_acc, v_acc, vDOP) are legitimately zero when
+// fed from callers that don't have a real source for them -- see the GPS
+// sensor drivers for what they do populate.
+uint8_t crsf_pack_gps_extended(uint8_t *buf,
+                                uint8_t fix_type,
+                                int16_t n_speed, int16_t e_speed, int16_t v_speed,
+                                int16_t h_speed_acc, int16_t track_acc,
+                                int16_t alt_ellipsoid, int16_t h_acc, int16_t v_acc,
+                                uint8_t hdop, uint8_t vdop);
 
 // 0x08 Battery Sensor (8 bytes). voltage/current LSB = 10mV / 10mA
 // (see note in project plan: crsf.md's literal 10uV/10uA would cap pack
@@ -79,6 +101,18 @@ uint8_t crsf_pack_temp(uint8_t *buf, uint8_t source_id, int16_t temp_decidegc);
 // `count` must be <= 29; returns 0 (writes nothing) if it isn't.
 uint8_t crsf_pack_voltages(uint8_t *buf, uint8_t source_id,
                             const uint16_t *voltages_mv, uint8_t count);
+
+// 0x13 Accel Gyro (18 bytes). Raw accel/gyro samples in NEU bodyframe
+// (crsf.md: +X forward/roll-left, +Y right/pitch-up, +Z up/yaw-clockwise --
+// the caller's sensor must be mounted to match, this file has no way to
+// correct for mounting orientation), pre-scaled by the caller into CRSF's
+// own fixed-point units: gyro LSB = INT16_MAX/2000 DPS, accel LSB =
+// INT16_MAX/16 G. sample_time_us is a free-running microsecond timestamp
+// (e.g. micros()) of when the sample was taken, not wall-clock time.
+uint8_t crsf_pack_accel_gyro(uint8_t *buf, uint32_t sample_time_us,
+                              int16_t gyro_x, int16_t gyro_y, int16_t gyro_z,
+                              int16_t acc_x, int16_t acc_y, int16_t acc_z,
+                              int16_t gyro_temp_centidegc);
 
 // --- Baro pack helpers (formulas transcribed from crsf.md) -----------
 uint16_t crsf_pack_altitude_dm(int32_t altitude_dm);

@@ -161,6 +161,16 @@ async function generateArduinoSingleFile(boardId, baud, selection) {
     const systemIncludes = new Set();
     const configLines = [];
 
+    // source_id is per-frame, not per sensor id: two different catalog
+    // entries sharing a frame (e.g. hall_3144e and hall_ky003 both on
+    // "0x0C RPM") need to land on distinct slots if a user adds one of
+    // each, not both restart at their own sourceIdBase and collide. The
+    // counter is seeded from whichever sensor's sourceIdBase is seen first
+    // for that frame (stable, since Object.values(SENSORS) iterates in
+    // catalog declaration order) and then just keeps incrementing --
+    // equivalent to the old base+index scheme when only one sensor type
+    // in a frame is actually selected.
+    const sourceIdCounters = {};
     const multiInstances = [];
     for (const sensor of Object.values(SENSORS)) {
         if (!sensor.pinRole) continue;
@@ -170,12 +180,17 @@ async function generateArduinoSingleFile(boardId, baud, selection) {
             // for any of sensor.configFields the user edited in the UI.
             const pin = typeof entry === "object" && entry !== null ? entry.pin : entry;
             const config = typeof entry === "object" && entry !== null ? entry.config : undefined;
+            let sourceId = null;
+            if (sensor.sourceIdBase != null) {
+                if (!(sensor.frame in sourceIdCounters)) sourceIdCounters[sensor.frame] = sensor.sourceIdBase;
+                sourceId = sourceIdCounters[sensor.frame]++;
+            }
             multiInstances.push({
                 sensor,
                 index,
                 pin,
                 config,
-                sourceId: sensor.sourceIdBase != null ? sensor.sourceIdBase + index : null,
+                sourceId,
                 label: insts.length > 1 ? `${sensor.name} #${index + 1}` : sensor.name,
             });
         });
@@ -246,11 +261,20 @@ async function generateArduinoSingleFile(boardId, baud, selection) {
             // converts the UI's display unit back to what the #define wants.
             if (line && config && Object.prototype.hasOwnProperty.call(config, name)) {
                 const field = (sensor.configFields || []).find((f) => f.key === name);
-                const scale = field && field.scale ? field.scale : 1;
-                line = line.replace(
-                    new RegExp(`(^#define\\s+${name}\\s+)\\S+`, "m"),
-                    (_m, prefix) => prefix + formatFloatLiteral(config[name] * scale)
-                );
+                if (field && field.type === "toggle") {
+                    // Plain 0/1, not a float literal -- these guard #if
+                    // blocks in firmware/, which need an integer constant.
+                    line = line.replace(
+                        new RegExp(`(^#define\\s+${name}\\s+)\\S+`, "m"),
+                        (_m, prefix) => prefix + (config[name] ? "1" : "0")
+                    );
+                } else {
+                    const scale = field && field.scale ? field.scale : 1;
+                    line = line.replace(
+                        new RegExp(`(^#define\\s+${name}\\s+)\\S+`, "m"),
+                        (_m, prefix) => prefix + formatFloatLiteral(config[name] * scale)
+                    );
+                }
             }
             if (line) entries.push(line);
         }
